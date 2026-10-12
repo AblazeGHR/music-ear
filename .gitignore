@@ -1,0 +1,12 @@
+# Local baseline-review scratch clones (contains third-party code of varying
+# licenses — MUST NOT be committed; see docs/BASELINE_REVIEW.md)
+.baseline-review/
+
+# Dependencies / build output (kept empty by design — this is a no-build,
+# zero-dependency static site; listed for safety if tooling is added later)
+node_modules/
+dist/
+
+# Editor / OS noise
+.DS_Store
+Thumbs.db
