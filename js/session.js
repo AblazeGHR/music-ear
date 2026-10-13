@@ -30,6 +30,7 @@ function runSession(root, cfg) {
   let answered = false;
   let everPlayed = false;     // becomes true after the first user-initiated play
   let sessionN = 0, sessionC = 0;
+  let qPlays = 0;             // plays of the current question; replays may vary
   let autoTimer = null;
   let piano = null;
   let userSeq = [];           // sequence answers
@@ -58,11 +59,16 @@ function runSession(root, cfg) {
   let gestureOn = false;
   let compareTimers = [];
   let lastChoiceId = null;
+  let lastResultCorrect = null;
 
   const gestureBtn = h('button', {
     class: 'gesture-switch', role: 'switch', 'aria-checked': 'false',
     onclick: () => setGesture(!gestureOn),
   }, 'Gesture');
+  const helpBtn = h('button', {
+    class: 'gesture-help-btn', 'aria-label': 'How gestures map to the buttons', title: 'How gestures map to the buttons',
+    onclick: () => showHelp(),
+  }, '?');
   const kbdEl = h('div', { class: 's-kbd' }, KBD_HINT);
   const overlay = h('div', { class: 'gesture-overlay' });
 
@@ -81,7 +87,38 @@ function runSession(root, cfg) {
     gestureBtn.setAttribute('aria-checked', String(on));
     kbdEl.textContent = on ? GESTURE_HINT : KBD_HINT;
     recognizer.reset();
-    if (on) Audio.playNote(76, 0.1);   // audible "it's on" for lowered eyes
+    if (on) { hideHelp(); Audio.playNote(76, 0.1); }   // audible "it's on"
+  }
+
+  // ── gesture help: what each gesture stands in for ──────────────────────────
+  let helpOverlay = null;
+
+  function showHelp() {
+    if (helpOverlay) return;
+    const ghRow = (gesture, meaning) => h('div', { class: 'gh-row' },
+      h('span', { class: 'gh-g' }, gesture),
+      h('span', { class: 'gh-arrow' }, '→'),
+      h('span', { class: 'gh-b' }, meaning));
+    helpOverlay = h('div', {
+      class: 'overlay',
+      onclick: e => { if (e.target === helpOverlay) hideHelp(); },
+    },
+      h('div', { class: 'gesture-help card' },
+        h('h2', {}, 'Gesture mode'),
+        h('p', { class: 'muted' }, 'With the switch on, these gestures stand in for the buttons:'),
+        h('div', { class: 'gh-rows' },
+          ghRow('Tap once', 'the 1st answer button'),
+          ghRow('Tap N times', 'the Nth answer button — a tick plays on every tap so you can count with your eyes closed'),
+          ghRow('Press and hold', 'Next → — or skip the question if you have not answered'),
+          ghRow('Draw a circle', '▶ Play / replay — after a wrong answer it plays your pick, then the real one')),
+        h('p', { class: 'tiny muted' }, 'A wrong answer plays your pick and then the real one, so the comparison needs no buttons. Everything else — back, Options, keyboard — stays locked until the switch is off.'),
+        h('div', { class: 'gesture-help-close' },
+          h('button', { class: 'btn primary', onclick: hideHelp }, 'Got it'))));
+    shell.append(helpOverlay);
+  }
+
+  function hideHelp() {
+    if (helpOverlay) { helpOverlay.remove(); helpOverlay = null; }
   }
 
   // Tap count → answer. Choice questions only; ignored before the first play.
@@ -95,6 +132,7 @@ function runSession(root, cfg) {
   function syncGestureAffordance() {
     const eligible = !!q && q.kind === 'choice' && q.options.length <= MAX_GESTURE_OPTIONS;
     gestureBtn.classList.toggle('hidden', !eligible);
+    helpBtn.classList.toggle('hidden', !eligible);
     if (!eligible && gestureOn) setGesture(false);
   }
 
@@ -107,7 +145,7 @@ function runSession(root, cfg) {
       h('div', { class: 's-title' },
         h('div', {}, cfg.title),
         h('div', { class: 's-sub' }, cfg.blurb)),
-      scoreEl, gestureBtn),
+      scoreEl, gestureBtn, helpBtn),
     h('main', { class: 's-body' },
       h('div', { class: 's-stage' }, playBtn, promptEl, howToEl),
       answersEl, feedbackEl, actionsEl,
@@ -121,12 +159,32 @@ function runSession(root, cfg) {
     scoreEl.textContent = sessionN ? `✓ ${sessionC}/${sessionN}` : '';
   }
 
+  const pause = ms => new Promise(r => setTimeout(r, ms));
+
   async function playQ() {
     if (!q) return;
     everPlayed = true;
     playBtn.classList.add('playing');
     shell.classList.remove('awaiting-play');
-    try { await q.play(); } finally { playBtn.classList.remove('playing'); }
+    try {
+      // After a miss, replay is the A/B itself: your pick, then the real
+      // answer — the same pairing the buttons offer, but via play/circle/R.
+      const compareAfterMiss = answered && lastResultCorrect === false
+        && typeof q.playOption === 'function' && lastChoiceId !== null;
+      if (compareAfterMiss) {
+        for (const t of compareTimers) clearTimeout(t);
+        compareTimers = [];
+        await q.playOption(lastChoiceId);
+        await pause(200);
+        await q.playOption(q.answerId);
+      } else {
+        // First play is the question as generated; replays may re-voice it
+        // (e.g. a different direction) so the answer is learned as a sound.
+        const replay = qPlays > 0 && typeof q.replay === 'function';
+        qPlays++;
+        await (replay ? q.replay() : q.play());
+      }
+    } finally { playBtn.classList.remove('playing'); }
     playBtn.textContent = '↻';
   }
 
@@ -140,6 +198,8 @@ function runSession(root, cfg) {
     compareTimers = [];
     recognizer.reset();
     lastChoiceId = null;
+    lastResultCorrect = null;
+    qPlays = 0;
     q = cfg.next();
     answered = false;
     userSeq = [];
@@ -160,6 +220,7 @@ function runSession(root, cfg) {
 
   function finishAnswer(result, extraFeedback) {
     answered = true;
+    lastResultCorrect = result.correct;
     sessionN++;
     if (result.correct) sessionC++;
     State.recordAnswer(q.moduleId, result.itemResults, result.correct, result.confusion);
@@ -402,6 +463,7 @@ function runSession(root, cfg) {
 
   return () => {
     document.removeEventListener('keydown', onKeydown);
+    hideHelp();
     unbindGestures();
     for (const t of compareTimers) clearTimeout(t);
     clearAuto();

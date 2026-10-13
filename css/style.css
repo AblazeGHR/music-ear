@@ -441,6 +441,39 @@ button:focus-visible, a:focus-visible, select:focus-visible {
 .session.gesture-on a { pointer-events: none; }
 .session.gesture-on .gesture-switch { pointer-events: auto; position: relative; z-index: 40; }
 
+/* gesture help (the "?" next to the switch) */
+.gesture-help-btn {
+  flex: none;
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-dim);
+  font-weight: 700;
+  font-size: 0.9rem;
+  line-height: 1;
+}
+.gesture-help-btn:hover { border-color: var(--accent); color: var(--text); }
+.gesture-help-btn.hidden { display: none; }
+.gesture-help {
+  width: min(560px, 92vw);
+  padding: 1.4rem 1.5rem;
+  animation: pop-in 0.25s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+.gesture-help h2 { margin: 0 0 0.4rem; }
+.gesture-help p { margin: 0; }
+.gh-rows { display: flex; flex-direction: column; gap: 0.55rem; margin: 0.9rem 0; }
+.gh-row { display: flex; align-items: baseline; gap: 0.6rem; }
+.gh-g { flex: none; width: 118px; font-weight: 700; color: var(--mc, var(--accent)); }
+.gh-arrow { color: var(--text-dim); }
+.gh-b { font-size: 0.95rem; }
+.gesture-help-close { display: flex; justify-content: flex-end; margin-top: 0.9rem; }
+@media (max-width: 480px) {
+  .gh-row { flex-direction: column; gap: 0.1rem; }
+  .gh-arrow { display: none; }
+  .gh-g { width: auto; }
+}
+
 /* slots (progressions & melodies) */
 .slots {
   display: flex;

@@ -107,6 +107,42 @@ test('progression questions honour their length and tonic settings', () => {
   }
 });
 
+test('interval replays re-voice the question in a different direction', () => {
+  const dirOf = events => {
+    if (events.length === 1) return 'h';                 // both notes at once
+    return events[1].midi > events[0].midi ? 'a' : 'd';
+  };
+  const cfg = { items: ['P5'], dirs: ['a', 'd', 'h'] };
+
+  for (let i = 0; i < 40; i++) {
+    const q = generate('intervals', cfg);
+    assert.equal(q.dir, dirOf(q.events), 'the generated voicing matches its direction');
+    let prev = q.dir;
+    for (let k = 0; k < 6; k++) {
+      const events = q.replayNext();   // the pure half of replay(): no audio
+      assert.notEqual(q.dir, prev, 'a replay never repeats the direction just heard');
+      assert.equal(q.dir, dirOf(events), 'the re-voicing matches its direction');
+      assert.equal(q.events, events);
+      prev = q.dir;
+    }
+  }
+
+  // Across many replays every selected direction actually comes up.
+  const seen = new Set();
+  const q = generate('intervals', cfg);
+  for (let i = 0; i < 200; i++) { q.replayNext(); seen.add(q.dir); }
+  for (const d of ['a', 'd', 'h']) assert.ok(seen.has(d), `direction ${d} never chosen`);
+
+  // With a single direction selected there is no alternative: replay stays put.
+  const single = generate('intervals', { items: ['P5'], dirs: ['d'] });
+  single.replayNext();
+  assert.equal(single.dir, 'd');
+
+  // Exercises without a replay hook keep their plain play().
+  const chord = generate('chords', MODULES.find(m => m.id === 'chords').defaults);
+  assert.equal(typeof chord.replay, 'undefined');
+});
+
 test('melody statistics keys follow the configuration, not a level index', () => {
   const base = MODULES.find(m => m.id === 'melodies').defaults;
   const a = generate('melodies', { ...base, length: 5, firstGiven: false, leapy: true, chromatic: 0.18 });

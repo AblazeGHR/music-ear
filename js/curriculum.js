@@ -67,7 +67,7 @@ export const MODULES = [
     color: 'violet',
     kind: 'choice',
     prompt: 'What interval is this?',
-    howTo: 'Two notes, one distance. Name the interval between them, up, down or together.',
+    howTo: 'Two notes, one distance. Name the interval between them, up, down or together. Replays may switch direction — the interval is the answer.',
     blurb: 'The distance between two notes. Learn all twelve, up, down, and together.',
     tip: 'Anchor each interval to a song you know (shown when you miss one). Over time the song fades and the sound itself remains.',
     defaults: { items: ['M3', 'P5', 'P8'], dirs: ['a', 'd', 'h'] },

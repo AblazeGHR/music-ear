@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.2 — 2026-10-13
+
+- 🔁 **After a wrong answer, replay plays both.** The big play button (and the replay key, and the circle gesture) used to re-play only the question itself — i.e. only the correct sound — after a miss. It now plays your pick and then the real answer, the same A/B the “Your pick / Answer” buttons offer, from the same root
+
+## 0.6.1 — 2026-10-13
+
+- ❓ A small help button next to the gesture switch shows exactly what each gesture stands in for: tap once → the 1st answer button, tap N times → the Nth, press and hold → Next →, draw a circle → play / replay — plus how the tick-per-tap and the wrong-answer playback work. Locked in gesture mode itself, like everything except the switch
+- 🔄 **Interval replays now switch direction.** When several directions are selected (ascending / descending / harmonic), each replay re-voices the same interval in a randomly chosen *different* direction — the answer is learned as an interval, not as a fixed pattern. Statistics and the reference-song hint stay tied to the direction the question was drawn in; the compare buttons still play both options in one direction so the A/B stays fair
+
 ## 0.6.0 — 2026-10-13
 
 - ✋ **Gesture mode** — eyes-closed practice for multiple-choice exercises. The switch in the practice header hands the whole screen to three gestures: **tap N times = option N** (a tick per tap so you can count, committed when the tap window closes), **press and hold = next question**, **draw a circle = play / replay**. Everything else — back, the Options panel, keyboard shortcuts — is locked out until the switch is turned off, so nothing can be hit by accident with your eyes closed

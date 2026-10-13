@@ -118,6 +118,13 @@ function genAbsolute(mod, cfg) {
 
 // ── Intervals ────────────────────────────────────────────────────────────────
 
+// A random direction different from the one just heard, so replays of the same
+// interval never repeat the same voicing while alternatives remain selected.
+export function pickOtherDir(dirs, lastDir) {
+  const others = dirs.filter(d => d !== lastDir);
+  return others.length ? choice(others) : lastDir;
+}
+
 function genInterval(mod, cfg) {
   const cands = [];
   for (const id of cfg.items) {
@@ -133,20 +140,24 @@ function genInterval(mod, cfg) {
   if (picked.dir === 'd') rootLo = Math.max(48, 48 + semis);
   else rootHi = Math.min(72, 84 - semis);
   const root = randInt(rootLo, Math.max(rootLo, rootHi));
-  const events = Audio.intervalEvents(root, semis, picked.dir);
+
+  const dirs = [...new Set(cfg.dirs)];
+  let lastDir = picked.dir;
 
   const optionIds = [...new Set(cfg.items)];
   const song = INTERVALS[picked.id].songs?.[picked.dir === 'd' ? 'desc' : 'asc'];
   const dirWord = { a: 'ascending', d: 'descending', h: 'harmonic' }[picked.dir];
 
-  return {
+  const question = {
     moduleId: 'intervals', kind: 'choice', prompt: mod.prompt,
+    dir: lastDir,
+    events: Audio.intervalEvents(root, semis, lastDir),
     options: optionIds.map(id => ({ id, label: INTERVALS[id].name, sub: INTERVALS[id].short })),
     answerId: picked.id,
     mnemonic: song && picked.dir !== 'h'
       ? `${INTERVALS[picked.id].name} ${dirWord} · think “${song}”`
       : null,
-    play: () => playFresh(events),
+    play: () => playFresh(question.events),
     playOption: id => playFresh(Audio.intervalEvents(root, INTERVALS[id].semis, picked.dir)),
     grade(answeredId) {
       const correct = answeredId === this.answerId;
@@ -157,6 +168,19 @@ function genInterval(mod, cfg) {
       };
     },
   };
+
+  // Replays vary the voicing: the same interval comes back in another selected
+  // direction, never the one just heard. Statistics and the mnemonic stay tied
+  // to the direction the question was generated in.
+  question.replayNext = () => {
+    lastDir = pickOtherDir(dirs, lastDir);
+    question.dir = lastDir;
+    question.events = Audio.intervalEvents(root, semis, lastDir);
+    return question.events;
+  };
+  question.replay = () => playFresh(question.replayNext());
+
+  return question;
 }
 
 // ── Chords ───────────────────────────────────────────────────────────────────
