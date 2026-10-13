@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.4 — 2026-10-13
+
+- ⚡ **UI feedback sounds are near-instant.** Tap ticks, the right-answer blip and the gesture-on chime were scheduled with the 60 ms lookahead meant for multi-note phrases; they now use a few milliseconds, so a tap is heard as immediately as the device allows
+- 🔧 **The wrong-answer comparison no longer cuts itself off.** The two comparison sounds were fired by fixed timers (350 ms / 1250 ms), so a first option longer than 1.25 s — a two-note interval, a seven-note scale, a block+arpeggio chord — was faded out mid-sound when the second started. The pair is now played sequentially: the answer waits for your pick to finish, then follows after a 250 ms pause
+- ⚙️ **New setting: Gesture tap window** (Quick 250 ms / Normal 350 ms / Relaxed 550 ms, default 350). How long the app waits for another tap before taking your answer — the shorter it is, the sooner the answer feedback arrives. Applies from the next exercise you open
+
 ## 0.6.3 — 2026-10-13
 
 - 🎵 **Interval directions now reorder the same two notes instead of changing them.** Descending used to re-voice the interval below the root (an ascending C→G became C→F when flipped), so only the first note stayed the same. The pair is now fixed — lower note first ascending, upper note first descending, both together harmonic; the direction only changes the order or simultaneity, never the pitches. The register logic was simplified to match (one pair, always inside C3–C6)

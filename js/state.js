@@ -18,6 +18,7 @@ const DEFAULT_SETTINGS = {
   chordStyle: 'block+arp',   // 'block' | 'block+arp' | 'arp'
   degreeLabels: 'solfege',   // 'solfege' | 'number'
   melodyTempo: 0.55,         // seconds per note
+  tapWindowMs: 350,          // gesture mode: wait for another tap before answering
   exercises: {},             // moduleId -> question-config overrides (see moduleConfig)
 };
 

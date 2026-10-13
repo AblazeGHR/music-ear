@@ -92,9 +92,12 @@ function tone(midi, when, dur, vel = 1) {
 
 // events: [{ midi | midis, at, dur, vel }] with `at` in seconds from start.
 // Resolves when the last event has finished sounding.
-export async function playEvents(events) {
+// `lead` is the scheduling lookahead: the default 60 ms keeps multi-note
+// phrases sample-accurate, while UI feedback (taps, blips) passes a few
+// milliseconds so it is heard as immediately as the device allows.
+export async function playEvents(events, opts = {}) {
   await ensureRunning();
-  const t0 = ctx.currentTime + 0.06;
+  const t0 = ctx.currentTime + (opts.lead ?? 0.06);
   let end = 0;
   for (const e of events) {
     const midis = e.midis || [e.midi];
@@ -104,8 +107,8 @@ export async function playEvents(events) {
   return new Promise(res => setTimeout(res, (end + 0.15) * 1000));
 }
 
-export function playNote(midi, dur = 0.8, vel = 1) {
-  return playEvents([{ midi, at: 0, dur, vel }]);
+export function playNote(midi, dur = 0.8, vel = 1, opts = {}) {
+  return playEvents([{ midi, at: 0, dur, vel }], opts);
 }
 
 // dir: 'a' ascending, 'd' descending, 'h' harmonic. rootMidi is the first note.

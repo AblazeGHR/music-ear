@@ -214,6 +214,12 @@ export function renderSettings(root) {
       })),
     row('Auto-advance', 'Move to the next question automatically after a correct answer.',
       toggle(s.autoAdvance, v => { s.autoAdvance = v; State.save(); })),
+    row('Gesture tap window', 'How long the app waits for another tap before taking your answer in gesture mode — shorter means quicker feedback. Applies from the next exercise you open.',
+      select(String(s.tapWindowMs), [
+        ['250', 'Quick (250 ms)'],
+        ['350', 'Normal (350 ms)'],
+        ['550', 'Relaxed (550 ms)'],
+      ], v => { s.tapWindowMs = Number(v); State.save(); })),
     row('Chord playback', 'Arpeggiating after the block chord helps you hear individual notes.',
       select(s.chordStyle, [
         ['block', 'Block chord only'],

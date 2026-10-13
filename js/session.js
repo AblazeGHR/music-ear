@@ -57,7 +57,7 @@ function runSession(root, cfg) {
   const KBD_HINT = '1–9 answer · R replay · ⏎ next · ⌫ undo';
   const GESTURE_HINT = 'Tap ×N = option N · Hold = next · Circle = replay';
   let gestureOn = false;
-  let compareTimers = [];
+  let compareRun = 0;          // generation counter for the A/B playback
   let lastChoiceId = null;
   let lastResultCorrect = null;
 
@@ -72,12 +72,15 @@ function runSession(root, cfg) {
   const kbdEl = h('div', { class: 's-kbd' }, KBD_HINT);
   const overlay = h('div', { class: 'gesture-overlay' });
 
+  // How long the app waits for another tap before taking the answer; tuned in
+  // Settings (a session picks up the stored value when it starts).
+  const tapWindowMs = Number(State.state.settings.tapWindowMs);
   const recognizer = createRecognizer({
-    onTap: () => { if (gestureOn) Audio.playNote(84, 0.045); },   // count ticks
+    onTap: () => { if (gestureOn) Audio.playNote(84, 0.045, 1, { lead: UI_LEAD }); },   // count ticks
     onCommit: n => { if (gestureOn) submitByCount(n); },
     onHold: () => { if (gestureOn) { clearAuto(); nextQuestion(); } },
     onCircle: () => { if (gestureOn) playQ(); },
-  });
+  }, tapWindowMs > 0 ? { tapWindowMs } : {});
   const unbindGestures = bindPointerSurface(overlay, recognizer);
 
   function setGesture(on) {
@@ -87,7 +90,7 @@ function runSession(root, cfg) {
     gestureBtn.setAttribute('aria-checked', String(on));
     kbdEl.textContent = on ? GESTURE_HINT : KBD_HINT;
     recognizer.reset();
-    if (on) { hideHelp(); Audio.playNote(76, 0.1); }   // audible "it's on"
+    if (on) { hideHelp(); Audio.playNote(76, 0.1, 1, { lead: UI_LEAD }); }   // audible "it's on"
   }
 
   // ── gesture help: what each gesture stands in for ──────────────────────────
@@ -161,6 +164,28 @@ function runSession(root, cfg) {
 
   const pause = ms => new Promise(r => setTimeout(r, ms));
 
+  const UI_LEAD = 0.01;         // s — UI feedback sounds should feel instant
+  const COMPARE_GAP_MS = 250;   // pause between your pick and the real answer
+
+  // Plays the wrong-answer comparison: your pick, then the real answer. The
+  // second sound waits for the first to finish, so a long option — a two-note
+  // interval, a seven-note scale — is never cut off by a fixed timer. Any new
+  // run (or moving to the next question) abandons whatever was in flight.
+  async function playComparison(leadMs) {
+    const run = ++compareRun;
+    const qRef = q;
+    const pick = lastChoiceId;
+    if (!qRef || pick === null || typeof qRef.playOption !== 'function') return;
+    const answerId = qRef.answerId;
+    await pause(leadMs);
+    if (run !== compareRun) return;
+    await qRef.playOption(pick);
+    if (run !== compareRun) return;
+    await pause(COMPARE_GAP_MS);
+    if (run !== compareRun) return;
+    await qRef.playOption(answerId);
+  }
+
   async function playQ() {
     if (!q) return;
     everPlayed = true;
@@ -172,11 +197,7 @@ function runSession(root, cfg) {
       const compareAfterMiss = answered && lastResultCorrect === false
         && typeof q.playOption === 'function' && lastChoiceId !== null;
       if (compareAfterMiss) {
-        for (const t of compareTimers) clearTimeout(t);
-        compareTimers = [];
-        await q.playOption(lastChoiceId);
-        await pause(200);
-        await q.playOption(q.answerId);
+        await playComparison(0);
       } else {
         // First play is the question as generated; replays may re-voice it
         // (e.g. a different direction) so the answer is learned as a sound.
@@ -194,8 +215,7 @@ function runSession(root, cfg) {
 
   function nextQuestion() {
     clearAuto();
-    for (const t of compareTimers) clearTimeout(t);
-    compareTimers = [];
+    compareRun++;               // abandon any comparison still playing
     recognizer.reset();
     lastChoiceId = null;
     lastResultCorrect = null;
@@ -233,10 +253,9 @@ function runSession(root, cfg) {
     // and then the real one, so the comparison is heard without any button.
     if (gestureOn) {
       if (result.correct) {
-        Audio.playNote(91, 0.14);
-      } else if (q.playOption && lastChoiceId !== null) {
-        compareTimers.push(setTimeout(() => q.playOption(lastChoiceId), 350));
-        compareTimers.push(setTimeout(() => q.playOption(q.answerId), 1250));
+        Audio.playNote(91, 0.14, 1, { lead: UI_LEAD });
+      } else {
+        playComparison(120);    // fire and forget; the run guard keeps it safe
       }
     }
 
@@ -465,7 +484,7 @@ function runSession(root, cfg) {
     document.removeEventListener('keydown', onKeydown);
     hideHelp();
     unbindGestures();
-    for (const t of compareTimers) clearTimeout(t);
+    compareRun++;
     clearAuto();
     Audio.stopAll();
   };
