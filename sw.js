@@ -1,5 +1,5 @@
 // sw.js — offline support: network-first with cache fallback.
-const CACHE = 'earpath-v6';
+const CACHE = 'earpath-v7';
 const ASSETS = [
   './',
   './index.html',

@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.5.1 — 2026-10-13
+
+Bug fix: the Options panel's controls were built from values captured at render time, so their displayed state drifted from what was actually enabled.
+
+- 🐛 **Chips and toggles now redraw from the stored config after every edit** — a clicked chip lights up (or dims) immediately, and the same control can be toggled back and forth. Previously the visual state never changed, and because the click handler compared against a stale captured value, a chip could only ever be switched one way (added items could not be removed, removed items could not be re-added)
+- 🐛 **Numeric ranges keep both edits.** Editing the second bound no longer reverts the first (each edit read a snapshot taken when the panel was built), and an inverted pair is corrected in the boxes as well as in storage
+- 🐛 **"Reset to defaults" now resyncs every control**, not just the question
+- 🐛 **Degenerate pools no longer hang or crash**: a one-chord progression pool used to spin forever in the "avoid repeating the previous chord" loop (freezing the tab); a one-note melody pool used to throw. Both now produce a valid question, and switching the key with a mismatched pool no longer asks for a tonic that has no answer button
+- Tests: 31 cases (new: degenerate-pool regressions for progressions and melodies, minor-key tonic fallback). Verified in Chromium: chip/toggle/range round-trips, reset, and full answer cycles on degenerate pools — console clean
+
 ## 0.5.0 — 2026-10-13
 
 - ♬ **Seventh-chord inversions** join the Chords exercise: 1st/2nd/3rd inversions of dom7, maj7, min7 and m7♭5 (16 new chord types), selectable in Options and included in the default pool alongside the triad inversions. The symmetric dim7 deliberately has no inversion entries — each would be enharmonically another dim7, so "the" correct answer would be ambiguous

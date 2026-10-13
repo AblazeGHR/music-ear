@@ -285,21 +285,23 @@ function genDegree(mod, cfg) {
 // ── Progressions ──────────────────────────────────────────────────────────────
 
 function genProgression(mod, cfg) {
-  const tonic = cfg.mode === 'major' ? 'I' : 'i';
+  // The forced tonic must exist in the pool — switching to a minor key with a
+  // major-numeral pool must not ask for a chord that has no answer button.
+  const tonicId = cfg.mode === 'major' ? 'I' : 'i';
+  const useTonic = cfg.startTonic && cfg.pool.includes(tonicId);
   const enders = cfg.pool.filter(n => ['I', 'i', 'V', 'vi'].includes(n));
 
-  const seq = [];
-  seq.push(cfg.startTonic ? tonic : choice(cfg.pool));
+  const seq = [useTonic ? tonicId : choice(cfg.pool)];
   for (let i = 1; i < cfg.length; i++) {
+    if (cfg.pool.length < 2) { seq.push(cfg.pool[0]); continue; }   // no alternative chord
     let next;
     do { next = choice(cfg.pool); } while (next === seq[i - 1]);
     seq.push(next);
   }
   // Real progressions tend to land somewhere stable.
   if (enders.length && Math.random() < 0.7 && !enders.includes(seq[seq.length - 1])) {
-    let last;
-    do { last = choice(enders); } while (last === seq[seq.length - 2]);
-    seq[seq.length - 1] = last;
+    const alternatives = enders.filter(n => n !== seq[seq.length - 2]);
+    if (alternatives.length) seq[seq.length - 1] = choice(alternatives);
   }
 
   const keyRoot = randInt(50, 59);
@@ -311,7 +313,7 @@ function genProgression(mod, cfg) {
     at += 0.95;
   }
   const events = [...cadence, ...progEvents];
-  const given = seq.map((_, i) => i === 0 && cfg.startTonic);
+  const given = seq.map((_, i) => i === 0 && useTonic);
 
   return {
     moduleId: 'progressions', kind: 'sequence', prompt: mod.prompt,
@@ -359,6 +361,7 @@ function genMelody(mod, cfg) {
   const midis = [allowed[idx]];
   for (let i = 1; i < cfg.length; i++) {
     const moves = stepWeights.filter(([s]) => idx + s >= 0 && idx + s < allowed.length);
+    if (!moves.length) { midis.push(allowed[idx]); continue; }   // pool too small to move
     const [step] = weightedChoice(moves, moves.map(([, w]) => w));
     idx += step;
     let m = allowed[idx];

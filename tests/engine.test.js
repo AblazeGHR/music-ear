@@ -126,3 +126,38 @@ test('grading returns the whole-question verdict plus per-skill results', () => 
   const wrong = q.grade(q.answerSeq.map((n, i) => (i === 0 ? n : 'I')));
   assert.equal(wrong.correct, false);
 });
+
+test('degenerate option pools terminate instead of hanging or throwing', () => {
+  // A one-chord pool has no alternative to pick: the generator must not spin
+  // forever in its "avoid repeating the previous chord" loop.
+  for (let i = 0; i < 50; i++) {
+    const q = generate('progressions', { mode: 'major', pool: ['I'], length: 4, startTonic: true });
+    assert.equal(q.answerSeq.length, 4);
+    assert.deepEqual(q.answerSeq, ['I', 'I', 'I', 'I']);
+    assert.deepEqual(q.options.map(o => o.id), ['I']);
+    assert.equal(q.grade(['I', 'I', 'I', 'I']).correct, true);
+  }
+
+  // Switching to a minor key while the pool only holds major numerals must not
+  // force a tonic that has no answer button.
+  for (let i = 0; i < 50; i++) {
+    const q = generate('progressions', { mode: 'minor', pool: ['I', 'IV', 'V'], length: 3, startTonic: true });
+    assert.equal(q.answerSeq.length, 3);
+    assert.ok(q.options.some(o => o.id === q.answerSeq[0]), 'first chord must be answerable');
+    assert.equal(q.given[0], false, 'no phantom tonic when the pool lacks it');
+  }
+
+  // A one-note melody pool cannot move: it must repeat, not crash.
+  for (let i = 0; i < 50; i++) {
+    const q = generate('melodies', { degrees: ['do'], length: 3, upperDo: false, leapy: false, chromatic: 0, firstGiven: true });
+    assert.equal(q.targetMidis.length, 3);
+    assert.equal(new Set(q.targetMidis).size, 1);
+    assert.equal(q.grade(q.targetMidis).correct, true);
+  }
+
+  // A two-degree pool still moves.
+  for (let i = 0; i < 50; i++) {
+    const q = generate('melodies', { degrees: ['do', 're'], length: 4, upperDo: false, leapy: false, chromatic: 0, firstGiven: true });
+    assert.equal(q.targetMidis.length, 4);
+  }
+});
