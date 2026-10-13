@@ -1,0 +1,10 @@
+{
+  "name": "music-ear",
+  "private": true,
+  "type": "module",
+  "description": "Ear training web app — a zero-dependency, no-build static site. This manifest exists only so Node can run the test suite; the app itself ships the repository root as-is.",
+  "license": "MIT",
+  "scripts": {
+    "test": "node --test"
+  }
+}

@@ -17,17 +17,17 @@
 
 ## 当前状态
 
-第一阶段（基座选型与初始化）已完成：以 [earpath-app](https://github.com/abeage1/earpath-app) v0.2.2（commit `f5241f5`，MIT License）为基座导入本项目。零第三方依赖、无构建步骤的原生 ES Module（ECMAScript Module）静态站。
+以 [earpath-app](https://github.com/abeage1/earpath-app) v0.2.2（commit `f5241f5`，MIT License）为基座导入，本项目当前版本 **0.3.0**。零第三方运行时依赖、无构建步骤的原生 ES Module（ECMAScript Module）静态站。
 
 | 需求 | 现状 |
 |---|---|
+| ① 绝对音准 | ✅ 已有（0.3.0 新增 Absolute Pitch 模块：单音无参考音，按音级类判分） |
 | ② 调内音级 | ✅ 已有（Scale Degrees 模块，先奏终止式建立调性，可切 solfège/数字） |
 | ③ 音程 | ✅ 已有（12 种 × 升/降/同时 + 复合音程） |
 | ④ 和弦类型 | ✅ 已有（13 种：三和弦/七和弦/sus/六和弦/九和弦） |
 | ⑤ 和弦转位 | ⚠️ 部分（仅大三/小三三和弦的 1/2 转位；无七和弦转位） |
+| ⑥ 音色切换 | ❌ 缺失（仅单一合成音色；见 ROADMAP M2） |
 | ⑦ 统计 | ✅ 已有（逐技能正确率、连击、12 周热图、混淆对分析、JSON 导入导出） |
-| ① 绝对音准 | ❌ 缺失（上游有意不做，需新增模块） |
-| ⑥ 音色切换 | ❌ 缺失（仅单一合成音色；上游 roadmap 已列） |
 | ⑧ 自定义 | ⚠️ 部分（可任选关卡，无音域/题型直选） |
 
 差距与计划见 [docs/ROADMAP.md](docs/ROADMAP.md)；选型证据见 [docs/BASELINE_REVIEW.md](docs/BASELINE_REVIEW.md)。
@@ -47,6 +47,7 @@
 | `js/engine.js` | 题目生成与判分（每个模块一个生成器 + 判分函数） |
 | `js/state.js` | localStorage 持久化、逐技能统计、设置 |
 | `js/session.js` / `js/views.js` / `js/piano.js` / `js/ui.js` | 练习界面 / 页面视图 / 屏幕键盘 / DOM 工具 |
+| `tests/` | `node --test` 测试：乐理数据 + 模块注册 + 出题/判分不变量 |
 | `sw.js` | 离线缓存（network-first，联网时即时更新） |
 
 ## 本地运行
@@ -61,6 +62,18 @@ npx serve .
 ```
 
 打开 http://localhost:8123 。`localhost` 下匿名统计已被上游逻辑禁用，不影响开发。
+
+> 开发提示：`python -m http.server` 不发送 `Cache-Control`，浏览器可能用启发式缓存命中旧的 ES Module，导致"改了代码却看不到效果"。改完 `js/*.js` 后若页面行为没变，换一个新端口访问，或在 DevTools 里勾选 "Disable cache" 后硬刷新（service worker 本身是 network-first，但拦不住 HTTP 缓存）。
+
+## 测试
+
+乐理数据（频率换算、音程半音数、和弦结构与转位、音阶集合、罗马数字、模块注册完整性）是判分的地基，因此由测试守护：
+
+```bash
+npm test          # 等价于 node --test（Node 内置测试运行器，零依赖）
+```
+
+`package.json` 只为测试存在（`type: module` + 一个 test 脚本，无任何依赖）；应用本身仍然是「仓库根目录即产物」的纯静态站。
 
 ## 部署
 

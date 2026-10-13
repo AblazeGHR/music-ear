@@ -4,7 +4,7 @@ import { h, ring, fmtPct, go } from './ui.js';
 import * as State from './state.js';
 import * as Audio from './audio.js';
 import { MODULES, moduleById, ONBOARDING_PATHS } from './curriculum.js';
-import { INTERVALS, CHORDS, SCALES, DEGREES } from './theory.js';
+import { INTERVALS, CHORDS, SCALES, DEGREES, pitchClassName } from './theory.js';
 import { track } from './analytics.js';
 import { APP_VERSION, REPO_URL } from './config.js';
 
@@ -134,6 +134,7 @@ export function renderModule(root, moduleId) {
     : moduleId === 'scales' ? SCALES[id].name
     : moduleId === 'degrees'
       ? (State.state.settings.degreeLabels === 'number' ? DEGREES[id].number : DEGREES[id].solfege)
+    : moduleId === 'absolute' ? pitchClassName(id)
     : id;
 
   const rows = mod.levels.map((level, i) => {
@@ -216,6 +217,7 @@ export function renderStats(root) {
     : moduleId === 'chords' ? CHORDS[id]?.name
     : moduleId === 'scales' ? SCALES[id]?.name
     : moduleId === 'degrees' ? DEGREES[id?.split(':').pop()]?.solfege ?? id
+    : moduleId === 'absolute' ? pitchClassName(id)
     : id;
 
   function comparePlay(moduleId, id) {
@@ -234,10 +236,12 @@ export function renderStats(root) {
         { midi: root, at: 0, dur: 0.6 },
         { midi: root + deg.semis, at: 0.75, dur: 0.9 },
       ]);
+    } else if (moduleId === 'absolute' && typeof id === 'number') {
+      Audio.playEvents([{ midi: root + id, at: 0, dur: 0.9 }]);
     }
   }
 
-  const playable = mid => ['intervals', 'chords', 'scales', 'degrees'].includes(mid);
+  const playable = mid => ['intervals', 'chords', 'scales', 'degrees', 'absolute'].includes(mid);
 
   const page = h('div', { class: 'page' },
     topbar('stats'),

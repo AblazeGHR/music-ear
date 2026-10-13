@@ -28,6 +28,27 @@ export const MODULES = [
     ],
   },
   {
+    id: 'absolute',
+    title: 'Absolute Pitch',
+    icon: '♯',
+    color: 'lime',
+    kind: 'choice',
+    prompt: 'What note is this?',
+    howTo: 'One note plays on its own — no reference, no key, no chord. Name it from the twelve note names.',
+    blurb: 'Hear a single note in isolation and name it. The purest form of absolute pitch.',
+    tip: 'Say the name out loud before you answer, then sing it back. This is a labelling skill: the note already has a name in your head — reach for that before you start reasoning about the key.',
+    window: 12, need: 10,
+    // `items` are pitch classes (0 = C, 1 = C♯, 2 = D … 11 = B); `range` is an
+    // inclusive MIDI span. Both are level-owned so the custom-range setting
+    // (roadmap M3) has a single place to override.
+    levels: [
+      { name: 'Natural notes', hint: 'The seven natural names, C to B, between C3 and C5.', items: [0, 2, 4, 5, 7, 9, 11], range: [48, 72] },
+      { name: 'All twelve',     hint: 'Add the five accidentals: C♯ D E♭ F♯ A♭ B♭.', items: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11], range: [48, 72] },
+      { name: 'Any octave',     hint: 'Same twelve names, spread from C2 to C6 — the register must not give it away.', items: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11], range: [36, 84] },
+      { name: 'Sharps & flats', hint: 'Only the five accidentals.', items: [1, 3, 6, 8, 10], range: [48, 72] },
+    ],
+  },
+  {
     id: 'intervals',
     title: 'Intervals',
     icon: '⌒',
@@ -173,11 +194,11 @@ export const ONBOARDING_PATHS = {
   basics: {
     label: 'I know some basics',
     desc: 'Skip the warm-up. Start partway into intervals and chords.',
-    unlocks: { pitch: 99, intervals: 4, chords: 3, scales: 1, degrees: 1, progressions: 1, melodies: 1 },
+    unlocks: { pitch: 99, absolute: 2, intervals: 4, chords: 3, scales: 1, degrees: 1, progressions: 1, melodies: 1 },
   },
   experienced: {
     label: 'Experienced ear',
     desc: 'Jump straight to harmonic intervals, sevenths, modes and functional work.',
-    unlocks: { pitch: 99, intervals: 9, chords: 7, scales: 4, degrees: 3, progressions: 3, melodies: 3 },
+    unlocks: { pitch: 99, absolute: 99, intervals: 9, chords: 7, scales: 4, degrees: 3, progressions: 3, melodies: 3 },
   },
 };

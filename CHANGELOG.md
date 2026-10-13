@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.0 — 2026-10-13
+
+First release under this project's own development. Up to and including 0.2.2 is the upstream [earpath-app](https://github.com/abeage1/earpath-app) history (MIT, © abeage1), imported as the baseline — see [docs/BASELINE_REVIEW.md](docs/BASELINE_REVIEW.md).
+
+- ♯ **New module: Absolute Pitch** — hear one bare note with no reference, no key and no chord, and name it. Four levels: the seven natural names (C3–C5) → all twelve names → all twelve spread over C2–C6 so the register can't give it away → the five accidentals alone. Answers are graded by pitch class, so the app-wide enharmonic spelling table (C♯/E♭/F♯/A♭/B♭) stays consistent with the rest of the app
+- 📈 Absolute-pitch answers feed the existing statistics pipeline: per-name accuracy (`ap:<pitch class>`), streak, heat map, and an "Often confused" row that can play both names back in the same octave
+- 🔎 A test suite now guards the music theory: equal-temperament frequencies, interval semitones, chord qualities, the inversion invariant, scale collections, roman-numeral roots, and the module registry. Run it with `npm test` (Node's built-in runner — still zero runtime dependencies)
+- 🔒 PostHog analytics disabled (`js/config.js` key emptied), and the canonical/OG links that pointed at the upstream domain removed
+
 ## 0.2.2 — 2026-06-13
 
 - 📱 The dictation keyboard never scrolls anymore — it always fits your screen (scrolling hid notes and could play keys while panning)

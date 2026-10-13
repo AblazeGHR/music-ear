@@ -7,6 +7,7 @@
 import * as Audio from './audio.js';
 import {
   INTERVALS, CHORDS, SCALES, DEGREES, NUMERALS, CADENCES,
+  pitchClassName,
   randInt, choice, weightedChoice,
 } from './theory.js';
 import { moduleById } from './curriculum.js';
@@ -33,6 +34,7 @@ export function generate(moduleId, levelIdx) {
   const level = mod.levels[levelIdx];
   switch (moduleId) {
     case 'pitch': return genPitch(mod, level, levelIdx);
+    case 'absolute': return genAbsolute(mod, level, levelIdx);
     case 'intervals': return genInterval(mod, level, levelIdx);
     case 'chords': return genChord(mod, level, levelIdx);
     case 'scales': return genScale(mod, level, levelIdx);
@@ -70,6 +72,39 @@ function genPitch(mod, level, levelIdx) {
         correct,
         itemResults: [{ key: `pi:${this.answerId}`, correct }],
         confusion: null,
+      };
+    },
+  };
+}
+
+// ── Absolute pitch: one bare note, no reference ───────────────────────────────
+
+function genAbsolute(mod, level, levelIdx) {
+  const picked = pickWeighted(level.items.map(pc => ({ pc, itemKey: `ap:${pc}` })));
+  const [lo, hi] = level.range;
+  const noteMidi = randInt(lo, hi);
+  // The single note is all that ever sounds — no cadence, no drone, no root.
+  // That isolation *is* the exercise, so `events` is exposed on the question:
+  // it lets the "one note, no reference" invariant be asserted outside a browser.
+  const events = [{ midi: noteMidi, at: 0, dur: 1.0 }];
+  // Option previews are voiced in the question note's own octave, so a wrong
+  // answer is heard as the exact note it should have been.
+  const octaveBase = noteMidi - (noteMidi % 12);
+
+  return {
+    moduleId: 'absolute', levelIdx, kind: 'choice', prompt: mod.prompt,
+    noteMidi,
+    events,
+    options: level.items.map(pc => ({ id: pc, label: pitchClassName(pc) })),
+    answerId: picked.pc,
+    play: () => playFresh(events),
+    playOption: id => playFresh([{ midi: octaveBase + id, at: 0, dur: 0.9 }]),
+    grade(answeredId) {
+      const correct = answeredId === this.answerId;
+      return {
+        correct,
+        itemResults: [{ key: picked.itemKey, correct }],
+        confusion: { correctId: this.answerId, answeredId },
       };
     },
   };
