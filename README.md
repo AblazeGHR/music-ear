@@ -67,7 +67,15 @@ npm test          # 等价于 node --test
 
 ## 部署
 
-纯静态：将仓库根目录直接发布到任意静态托管（GitHub Pages / Cloudflare Pages / Netlify），无构建步骤。若部署到子路径（如 `https://<user>.github.io/music-ear/`），需核对 `manifest.webmanifest` 的 `start_url`/`scope` 与 `sw.js` 缓存路径是否兼容子路径（见 ROADMAP 风险项）。
+**线上站点：<https://trainear.ablaze.dpdns.org>**（Cloudflare Workers + Static Assets；自定义域由 `wrangler.jsonc` 的 `custom_domain` 路由在部署时自动创建，无需手工配 DNS）
+
+```bash
+npm run deploy    # 需要环境变量 CLOUDFLARE_API_TOKEN
+```
+
+`scripts/deploy.mjs` 把运行时文件（`index.html`、`css/`、`js/`、`assets/`、`manifest.webmanifest`、`sw.js`）复制进 `dist/` 后交给 wrangler 上传——docs/tests/marketing 等非运行时文件不会发布。仓库根目录本身就是应用，`dist/` 只是发布暂存，不需要手动维护。
+
+纯静态无构建，也可以发布到任意其他静态托管（GitHub Pages / Cloudflare Pages / Netlify）。若部署到子路径（如 `https://<user>.github.io/music-ear/`），需核对 `manifest.webmanifest` 的 `start_url`/`scope` 与 `sw.js` 缓存路径是否兼容子路径（见 ROADMAP 风险项）。
 
 ## 数据与隐私
 
