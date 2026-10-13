@@ -2,8 +2,8 @@
 
 import * as State from './state.js';
 import * as Audio from './audio.js';
-import { renderHome, renderModule, renderStats, renderSettings, renderGuide } from './views.js';
-import { renderPractice, renderDaily } from './session.js';
+import { renderHome, renderStats, renderSettings, renderGuide } from './views.js';
+import { renderPractice } from './session.js';
 import { initAnalytics, track } from './analytics.js';
 import { mountFeedback, setFeedbackVisible } from './feedback.js';
 
@@ -16,18 +16,14 @@ function route() {
   window.scrollTo(0, 0);
 
   const parts = location.hash.replace(/^#\/?/, '').split('/').filter(Boolean);
-  const [view, a, b] = parts;
+  const [view, a] = parts;
 
   // Keep the floating feedback button out of the way while practicing.
-  setFeedbackVisible(view !== 'practice' && view !== 'daily');
+  setFeedbackVisible(view !== 'practice');
   track('screen', { view: view || 'home', module: view === 'practice' ? a : undefined });
 
   if (!view) cleanup = renderHome(app);
-  else if (view === 'module' && a) cleanup = renderModule(app, a);
-  else if (view === 'practice' && a !== undefined && b !== undefined) {
-    cleanup = renderPractice(app, a, Number(b));
-  }
-  else if (view === 'daily') cleanup = renderDaily(app);
+  else if (view === 'practice' && a) cleanup = renderPractice(app, a);
   else if (view === 'stats') cleanup = renderStats(app);
   else if (view === 'settings') cleanup = renderSettings(app);
   else if (view === 'guide') cleanup = renderGuide(app);
@@ -37,11 +33,7 @@ function route() {
 State.load();
 Audio.setVolume(State.state.settings.volume);
 initAnalytics();
-track('app_open', {
-  onboarded: State.state.onboarded,
-  total_answers: State.state.totals.a,
-  streak: State.state.streak.current,
-});
+track('app_open', { total_answers: State.state.totals.a });
 mountFeedback();
 
 window.addEventListener('hashchange', route);

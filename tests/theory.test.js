@@ -9,7 +9,7 @@ import {
   INTERVALS, CHORDS, SCALES, DEGREES, NUMERALS,
   randInt, choice, weightedChoice,
 } from '../js/theory.js';
-import { MODULES, ONBOARDING_PATHS, moduleById } from '../js/curriculum.js';
+import { MODULES, moduleById } from '../js/curriculum.js';
 
 test('midiToFreq is twelve-tone equal temperament anchored at A4 = 440 Hz', () => {
   assert.equal(midiToFreq(69), 440);
@@ -85,15 +85,27 @@ test('inversion voicings contain the same pitch classes as their root position',
       return rotated.size === set.size && [...set].every(x => rotated.has(x));
     });
   };
-  assert.ok(isInversionOf(CHORDS.maj_1.semis, CHORDS.maj.semis), 'maj_1 is a major triad');
-  assert.ok(isInversionOf(CHORDS.maj_2.semis, CHORDS.maj.semis), 'maj_2 is a major triad');
-  assert.ok(isInversionOf(CHORDS.min_1.semis, CHORDS.min.semis), 'min_1 is a minor triad');
-  assert.ok(isInversionOf(CHORDS.min_2.semis, CHORDS.min.semis), 'min_2 is a minor triad');
+  const INVERSIONS = [
+    ['maj_1', 'maj'], ['maj_2', 'maj'], ['min_1', 'min'], ['min_2', 'min'],
+    ['dom7_1', 'dom7'], ['dom7_2', 'dom7'], ['dom7_3', 'dom7'],
+    ['maj7_1', 'maj7'], ['maj7_2', 'maj7'], ['maj7_3', 'maj7'],
+    ['min7_1', 'min7'], ['min7_2', 'min7'], ['min7_3', 'min7'],
+    ['m7b5_1', 'm7b5'], ['m7b5_2', 'm7b5'], ['m7b5_3', 'm7b5'],
+  ];
+  for (const [inv, quality] of INVERSIONS) {
+    assert.ok(CHORDS[inv], `${inv} is defined`);
+    assert.ok(isInversionOf(CHORDS[inv].semis, CHORDS[quality].semis),
+      `${inv} must be an inversion of ${quality}`);
+  }
   // concrete spot checks: C major 1st inversion is E–G–C
   assert.deepEqual(CHORDS.maj_1.semis, [0, 3, 8]);
   assert.deepEqual(CHORDS.maj_2.semis, [0, 5, 9]);
   assert.deepEqual(CHORDS.min_1.semis, [0, 4, 9]);
   assert.deepEqual(CHORDS.min_2.semis, [0, 5, 8]);
+  // a seventh in first inversion has its third in the bass (C7 → E–G–B♭–C)
+  assert.deepEqual(CHORDS.dom7_1.semis, [0, 3, 6, 8]);
+  // the symmetric dim7 deliberately has no inversion entries
+  assert.ok(!Object.keys(CHORDS).some(id => id.startsWith('dim7_')));
 });
 
 test('scales start at the root and return to the octave', () => {
@@ -169,24 +181,73 @@ test('random helpers stay inside their ranges', () => {
   assert.ok(['x', 'y'].includes(weightedChoice(items, [1, 1])));
 });
 
-test('the module registry is internally consistent', () => {
+test('the exercise registry is internally consistent', () => {
   const ids = MODULES.map(m => m.id);
   assert.equal(new Set(ids).size, ids.length, 'module ids must be unique');
+
+  // Which theory table validates each exercise's item pool.
+  const POOLS = {
+    absolute: { table: pc => Number.isInteger(pc) && pc >= 0 && pc < 12, keys: ['items'] },
+    intervals: { table: id => id in INTERVALS, keys: ['items'] },
+    chords: { table: id => id in CHORDS, keys: ['items'] },
+    scales: { table: id => id in SCALES, keys: ['items'] },
+    degrees: { table: id => id in DEGREES, keys: ['items'] },
+    progressions: { table: id => id in NUMERALS, keys: ['pool'] },
+    melodies: { table: id => id in DEGREES, keys: ['degrees'] },
+  };
+
   for (const mod of MODULES) {
-    assert.ok(mod.title && mod.icon && mod.blurb && mod.prompt, `${mod.id} copy`);
+    assert.ok(mod.title && mod.icon && mod.blurb && mod.prompt && mod.howTo && mod.tip, `${mod.id} copy`);
     assert.ok(['choice', 'sequence', 'melody'].includes(mod.kind), `${mod.id} kind`);
     assert.ok(/^[a-z]+$/.test(mod.color), `${mod.id} colour token`);
-    assert.ok(mod.window > 0 && mod.need > 0 && mod.need <= mod.window, `${mod.id} goal`);
-    assert.ok(mod.levels.length > 0, `${mod.id} levels`);
-    for (const lv of mod.levels) {
-      assert.ok(lv.name && lv.hint, `${mod.id} level copy`);
+    assert.ok(mod.options.length > 0, `${mod.id} exposes options`);
+
+    const pool = POOLS[mod.id];
+    if (pool) {
+      for (const key of pool.keys) {
+        const items = mod.defaults[key];
+        assert.ok(Array.isArray(items) && items.length > 0, `${mod.id}.${key} pool`);
+        assert.equal(new Set(items).size, items.length, `${mod.id}.${key} pool unique`);
+        for (const item of items) {
+          assert.ok(pool.table(item), `${mod.id}.${key}: unknown item ${item}`);
+        }
+      }
+    }
+    if (mod.defaults.range) {
+      const [lo, hi] = mod.defaults.range;
+      assert.ok(lo >= 21 && hi <= 108 && lo <= hi, `${mod.id} range within MIDI 21–108`);
+    }
+    if (mod.defaults.gap) {
+      const [lo, hi] = mod.defaults.gap;
+      assert.ok(lo >= 1 && hi <= 12 && lo <= hi, `${mod.id} gap within 1–12 semitones`);
+    }
+
+    // Option descriptors are well-formed and cover every configurable default.
+    for (const opt of mod.options) {
+      assert.ok(opt.key in mod.defaults, `${mod.id} option "${opt.key}" has no default`);
+      assert.ok(opt.label, `${mod.id} option "${opt.key}" needs a label`);
+      if (opt.type === 'chips' || opt.type === 'select') {
+        assert.ok(Array.isArray(opt.choices) && opt.choices.length > 0, `${mod.id}.${opt.key} choices`);
+        assert.ok(opt.choices.every(([v, l]) => l !== undefined), `${mod.id}.${opt.key} choice labels`);
+      } else if (opt.type === 'range') {
+        assert.ok(opt.min <= opt.max, `${mod.id}.${opt.key} range bounds`);
+      } else {
+        assert.equal(opt.type, 'toggle', `${mod.id}.${opt.key} unknown option type`);
+      }
+    }
+    const offered = new Set(mod.options.map(o => o.key));
+    for (const key of Object.keys(mod.defaults)) {
+      assert.ok(offered.has(key), `${mod.id} default "${key}" is not configurable`);
     }
   }
+
   assert.ok(moduleById('absolute'), 'absolute module registered');
-  // onboarding paths only mention modules that exist
-  for (const path of Object.values(ONBOARDING_PATHS)) {
-    for (const id of Object.keys(path.unlocks)) {
-      assert.ok(moduleById(id), `onboarding path unlocks unknown module ${id}`);
-    }
+  assert.equal(moduleById('nope'), undefined);
+});
+
+test('melody and progression lengths are small positive integers', () => {
+  for (const id of ['melodies', 'progressions']) {
+    const len = moduleById(id).defaults.length;
+    assert.ok(Number.isInteger(len) && len >= 3 && len <= 7, `${id} length ${len}`);
   }
 });

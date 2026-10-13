@@ -1,0 +1,128 @@
+// engine.test.js — every exercise must generate playable, gradable questions
+// from a plain configuration object, and must stay inside the pool and register
+// it was given. These run without a browser: generate() only builds data.
+
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { generate } from '../js/engine.js';
+import { MODULES } from '../js/curriculum.js';
+
+test('every exercise generates questions from its default configuration', () => {
+  for (const mod of MODULES) {
+    for (let i = 0; i < 30; i++) {
+      const q = generate(mod.id, mod.defaults);
+      assert.ok(q, `${mod.id} produced a question`);
+      assert.equal(q.moduleId, mod.id);
+      assert.equal(q.kind, mod.kind);
+      if (q.kind !== 'melody') {
+        assert.ok(Array.isArray(q.options) && q.options.length > 0, `${mod.id} has options`);
+      }
+      assert.equal(typeof q.play, 'function');
+      // choice questions carry an answer id; sequence/melody carry their own
+      if (q.kind === 'choice') {
+        assert.ok(q.answerId !== undefined, `${mod.id} has an answer`);
+        assert.ok(q.options.some(o => o.id === q.answerId));
+      }
+      if (q.kind === 'sequence') assert.equal(q.slots, q.answerSeq.length);
+      if (q.kind === 'melody') assert.ok(q.targetMidis.length > 0 && q.keyRange[0] < q.keyRange[1]);
+    }
+  }
+});
+
+test('generate refuses unknown exercises', () => {
+  assert.equal(generate('nope', {}), null);
+  assert.equal(generate('intervals', null), null);
+});
+
+test('configured pools restrict what is asked and offered', () => {
+  const cfg = { items: ['M3', 'P5'], dirs: ['a'] };
+  const seen = new Set();
+  for (let i = 0; i < 200; i++) {
+    const q = generate('intervals', cfg);
+    assert.deepEqual(q.options.map(o => o.id), ['M3', 'P5']);
+    assert.ok(cfg.items.includes(q.answerId));
+    seen.add(q.answerId);
+  }
+  assert.deepEqual([...seen].sort(), ['M3', 'P5']);
+
+  const chords = { items: ['maj', 'min'] };
+  for (let i = 0; i < 100; i++) {
+    const q = generate('chords', chords);
+    assert.deepEqual(q.options.map(o => o.id), ['maj', 'min']);
+    assert.ok(['maj', 'min'].includes(q.answerId));
+  }
+
+  const degrees = { mode: 'minor', items: ['do', 'me', 'sol'], wide: false };
+  for (let i = 0; i < 100; i++) {
+    const q = generate('degrees', degrees);
+    assert.deepEqual(q.options.map(o => o.id), degrees.items);
+    assert.ok(degrees.items.includes(q.answerId));
+  }
+
+  const melodies = { degrees: ['do', 're', 'mi'], length: 3, upperDo: false, leapy: false, chromatic: 0, firstGiven: true };
+  for (let i = 0; i < 50; i++) {
+    const q = generate('melodies', melodies);
+    assert.equal(q.targetMidis.length, 3);
+    // every answer note is within the rendered keyboard
+    for (const m of q.targetMidis) assert.ok(m >= q.keyRange[0] && m <= q.keyRange[1]);
+  }
+});
+
+test('configured registers and gap bounds are respected', () => {
+  const cfg = { items: Array.from({ length: 12 }, (_, i) => i), range: [40, 50] };
+  for (let i = 0; i < 400; i++) {
+    assert.ok(generate('absolute', cfg).noteMidi >= 40 && generate('absolute', cfg).noteMidi <= 50);
+  }
+
+  const pitch = { gap: [7, 12], allowSame: false };
+  for (let i = 0; i < 200; i++) {
+    const q = generate('pitch', pitch);
+    const gap = Math.abs(q.events[1].midi - q.events[0].midi);
+    assert.ok(gap >= 7 && gap <= 12, `pitch gap ${gap} escaped [7, 12]`);
+    assert.ok(['up', 'down'].includes(q.answerId), 'allowSame=false must not ask "same"');
+  }
+
+  const fine = { gap: [1, 1], allowSame: true };
+  for (let i = 0; i < 100; i++) {
+    const q = generate('pitch', fine);
+    const gap = Math.abs(q.events[1].midi - q.events[0].midi);
+    assert.ok(gap <= 1, `fine-tuning gap ${gap} should be at most 1`);
+  }
+});
+
+test('progression questions honour their length and tonic settings', () => {
+  const cfg = { mode: 'major', pool: ['I', 'IV', 'V'], length: 3, startTonic: true };
+  for (let i = 0; i < 100; i++) {
+    const q = generate('progressions', cfg);
+    assert.equal(q.answerSeq.length, 3);
+    assert.equal(q.answerSeq[0], 'I', 'startTonic must open on I');
+    assert.equal(q.given[0], true);
+    assert.deepEqual(q.options.map(o => o.id), ['I', 'IV', 'V']);
+  }
+  const free = { ...cfg, startTonic: false };
+  for (let i = 0; i < 100; i++) {
+    const q = generate('progressions', free);
+    assert.equal(q.given[0], false);
+    assert.ok(['I', 'IV', 'V'].includes(q.answerSeq[0]));
+  }
+});
+
+test('melody statistics keys follow the configuration, not a level index', () => {
+  const base = MODULES.find(m => m.id === 'melodies').defaults;
+  const a = generate('melodies', { ...base, length: 5, firstGiven: false, leapy: true, chromatic: 0.18 });
+  assert.match(a.grade(a.targetMidis).itemResults[0].key, /^ml:5:0:1:1$/);
+  const b = generate('melodies', { ...base });
+  assert.match(b.grade(b.targetMidis).itemResults[0].key, /^ml:4:1:0:0$/);
+  // chromatic melodies use the same key as plain ones of the same shape
+  const c = generate('melodies', { ...base, chromatic: 0.18 });
+  assert.match(c.grade(c.targetMidis).itemResults[0].key, /^ml:4:1:0:1$/);
+});
+
+test('grading returns the whole-question verdict plus per-skill results', () => {
+  const q = generate('progressions', { mode: 'major', pool: ['I', 'V'], length: 3, startTonic: true });
+  const right = q.grade([...q.answerSeq]);
+  assert.equal(right.correct, true);
+  assert.equal(right.itemResults.length, 2, 'the given first slot is not a skill to grade');
+  const wrong = q.grade(q.answerSeq.map((n, i) => (i === 0 ? n : 'I')));
+  assert.equal(wrong.correct, false);
+});

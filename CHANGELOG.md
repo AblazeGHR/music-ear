@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.5.0 — 2026-10-13
+
+- ♬ **Seventh-chord inversions** join the Chords exercise: 1st/2nd/3rd inversions of dom7, maj7, min7 and m7♭5 (16 new chord types), selectable in Options and included in the default pool alongside the triad inversions. The symmetric dim7 deliberately has no inversion entries — each would be enharmonically another dim7, so "the" correct answer would be ambiguous
+- Tests now assert that every inversion is a pitch-class rotation of its root position
+
+## 0.4.0 — 2026-10-13
+
+The "no levels" release. Every exercise is now one flat practice mode in the spirit of [tonedear.com](https://tonedear.com/ear-training/intervals): pick an exercise, start immediately, and shape what you practise from its Options panel.
+
+- 🧹 **Removed the entire level/progression system**: no levels, no unlocks, no onboarding, no streaks, no 12-week heatmap, no daily workout, no completion celebrations. Progress is a flat per-skill accuracy record — which still weights question selection toward what you miss
+- 🎛 **Options panel on every exercise**: choose the exact question pool (intervals, chord types, scales, degrees, note names…), direction, key, register, melody length and toggles. Changes apply to the very next question and persist
+- 🏠 **Home is a plain exercise list** — click a card and start; each card shows your running accuracy
+- 📊 **Stats simplified** to what is useful: overall accuracy, per-exercise accuracy, and the "Often confused" pairs with playback
+- 🧪 **A real test suite** (still zero dependencies, Node's built-in runner): music-theory data, the exercise registry, question generation and grading invariants, and persistence — run with `npm test`
+- 🔒 Progress moves to a new `music-ear-v1` storage key, so 0.3.x progress does not carry over (use Settings → Export first if you care)
+- Net result: same eight exercises, roughly a thousand lines of JavaScript removed
+
 ## 0.3.0 — 2026-10-13
 
 First release under this project's own development. Up to and including 0.2.2 is the upstream [earpath-app](https://github.com/abeage1/earpath-app) history (MIT, © abeage1), imported as the baseline — see [docs/BASELINE_REVIEW.md](docs/BASELINE_REVIEW.md).

@@ -69,6 +69,22 @@ export const CHORDS = {
   maj_2: { semis: [0, 5, 9],          name: 'Major · 2nd inv', short: 'maj/5' },
   min_1: { semis: [0, 4, 9],          name: 'Minor · 1st inv', short: 'min/♭3' },
   min_2: { semis: [0, 5, 8],          name: 'Minor · 2nd inv', short: 'min/5' },
+  // Seventh-chord inversions, written the same way: offsets from the *bass*
+  // note, so the voicing is literal. (dim7 is deliberately absent — it is
+  // symmetric, so each inversion is enharmonically another dim7 and "the"
+  // correct answer would be ambiguous.)
+  dom7_1: { semis: [0, 3, 6, 8],      name: 'Dominant 7th · 1st inv', short: '7/3' },
+  dom7_2: { semis: [0, 3, 5, 9],      name: 'Dominant 7th · 2nd inv', short: '7/5' },
+  dom7_3: { semis: [0, 2, 6, 9],      name: 'Dominant 7th · 3rd inv', short: '7/♭7' },
+  maj7_1: { semis: [0, 3, 7, 8],      name: 'Major 7th · 1st inv', short: 'maj7/3' },
+  maj7_2: { semis: [0, 4, 5, 9],      name: 'Major 7th · 2nd inv', short: 'maj7/5' },
+  maj7_3: { semis: [0, 1, 5, 8],      name: 'Major 7th · 3rd inv', short: 'maj7/7' },
+  min7_1: { semis: [0, 4, 7, 9],      name: 'Minor 7th · 1st inv', short: 'm7/♭3' },
+  min7_2: { semis: [0, 3, 5, 8],      name: 'Minor 7th · 2nd inv', short: 'm7/5' },
+  min7_3: { semis: [0, 2, 5, 9],      name: 'Minor 7th · 3rd inv', short: 'm7/♭7' },
+  m7b5_1: { semis: [0, 3, 7, 9],      name: 'Half-diminished · 1st inv', short: 'm7♭5/♭3' },
+  m7b5_2: { semis: [0, 4, 6, 9],      name: 'Half-diminished · 2nd inv', short: 'm7♭5/♭5' },
+  m7b5_3: { semis: [0, 2, 5, 8],      name: 'Half-diminished · 3rd inv', short: 'm7♭5/♭7' },
 };
 
 // ── Scales ───────────────────────────────────────────────────────────────────

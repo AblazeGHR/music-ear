@@ -1,53 +1,34 @@
 // session.js — the practice screen: question loop, answer UIs for choice /
-// sequence / melody questions, feedback, level-completion celebration, and the
-// mixed "daily workout".
+// sequence / melody questions, feedback, and the exercise's Options panel.
 
 import { h, go } from './ui.js';
 import * as Audio from './audio.js';
 import * as Engine from './engine.js';
 import * as State from './state.js';
-import { MODULES, moduleById } from './curriculum.js';
+import { moduleById } from './curriculum.js';
+import { renderOptions } from './options.js';
 import { createPiano } from './piano.js';
 import { midiName } from './theory.js';
 import { track } from './analytics.js';
 
-export function renderPractice(root, moduleId, levelIdx) {
+export function renderPractice(root, moduleId) {
   const mod = moduleById(moduleId);
-  const level = mod.levels[levelIdx];
-  if (!level) { go('#/'); return () => {}; }
+  if (!mod) { go('#/'); return () => {}; }
   return runSession(root, {
     title: mod.title,
-    subtitle: `Level ${levelIdx + 1} · ${level.name}`,
+    blurb: mod.blurb,
     color: mod.color,
-    moduleId, levelIdx,
-    next: () => Engine.generate(moduleId, levelIdx),
-  });
-}
-
-export function renderDaily(root) {
-  const candidates = MODULES.filter(m => State.moduleStarted(m.id));
-  if (!candidates.length) { go('#/'); return () => {}; }
-  return runSession(root, {
-    title: 'Daily workout',
-    subtitle: 'Mixed practice from your current levels',
-    color: 'amber',
-    daily: { total: 15 },
-    next: () => {
-      const m = candidates[Math.floor(Math.random() * candidates.length)];
-      return Engine.generate(m.id, State.currentLevelIndex(m.id));
-    },
+    moduleId,
+    next: () => Engine.generate(moduleId, State.moduleConfig(moduleId)),
   });
 }
 
 function runSession(root, cfg) {
-  track('session_start', {
-    module: cfg.moduleId, level: cfg.levelIdx, daily: !!cfg.daily,
-  });
+  track('session_start', { module: cfg.moduleId });
   let q = null;
   let answered = false;
   let everPlayed = false;     // becomes true after the first user-initiated play
   let sessionN = 0, sessionC = 0;
-  let dailyDone = 0;
   let autoTimer = null;
   let piano = null;
   let userSeq = [];           // sequence answers
@@ -58,50 +39,34 @@ function runSession(root, cfg) {
   const playBtn = h('button', { class: 'playbtn', 'aria-label': 'Play / replay', onclick: () => playQ() }, '▶');
   const promptEl = h('div', { class: 's-prompt' });
   const howToEl = h('div', { class: 's-howto' });
-  const chipEl = h('div', { class: 's-chip' });
-  const goalEl = h('div', { class: 's-goal' });
   const answersEl = h('div', { class: 's-answers' });
   const feedbackEl = h('div', { class: 's-feedback' });
   const actionsEl = h('div', { class: 's-actions' });
   const scoreEl = h('div', { class: 's-score' });
-  const overlayEl = h('div', { class: 'overlay hidden' });
+
+  const mod = moduleById(cfg.moduleId);
+  const optionsEl = renderOptions(mod, () => { if (!answered) nextQuestion(); });
 
   const shell = h('div', { class: 'session', style: { '--mc': `var(--c-${cfg.color})` } },
     h('header', { class: 's-head' },
       h('button', {
         class: 'iconbtn', 'aria-label': 'Back',
-        onclick: () => go(cfg.daily ? '#/' : `#/module/${cfg.moduleId}`),
+        onclick: () => go('#/'),
       }, '←'),
       h('div', { class: 's-title' },
         h('div', {}, cfg.title),
-        h('div', { class: 's-sub' }, cfg.subtitle)),
+        h('div', { class: 's-sub' }, cfg.blurb)),
       scoreEl),
     h('main', { class: 's-body' },
-      h('div', { class: 's-stage' }, playBtn, chipEl, promptEl, howToEl, goalEl),
+      h('div', { class: 's-stage' }, playBtn, promptEl, howToEl),
       answersEl, feedbackEl, actionsEl,
-      h('div', { class: 's-kbd' }, '1–9 answer · R replay · ⏎ next · ⌫ undo')),
-    overlayEl);
+      optionsEl,
+      h('div', { class: 's-kbd' }, '1–9 answer · R replay · ⏎ next · ⌫ undo')));
   root.append(shell);
 
   // ── helpers ────────────────────────────────────────────────────────────────
   function updateScore() {
-    if (cfg.daily) {
-      scoreEl.textContent = `${dailyDone}/${cfg.daily.total} · ✓ ${sessionC}`;
-    } else {
-      scoreEl.textContent = sessionN ? `✓ ${sessionC}/${sessionN}` : '';
-    }
-  }
-
-  function updateGoal() {
-    if (cfg.daily) { goalEl.textContent = ''; return; }
-    const mod = moduleById(cfg.moduleId);
-    const ls = State.levelStats(cfg.moduleId, cfg.levelIdx);
-    if (ls.completedAt) {
-      goalEl.textContent = 'Level complete · free practice';
-    } else {
-      const got = ls.recent.slice(-mod.window).reduce((a, b) => a + b, 0);
-      goalEl.textContent = `Goal: ${mod.need} of your last ${mod.window} · now ${got}/${mod.need}`;
-    }
+    scoreEl.textContent = sessionN ? `✓ ${sessionC}/${sessionN}` : '';
   }
 
   async function playQ() {
@@ -129,16 +94,9 @@ function runSession(root, cfg) {
     answersEl.innerHTML = '';
     playBtn.textContent = '▶';
     promptEl.textContent = q.prompt;
-    howToEl.textContent = moduleById(q.moduleId).howTo || '';
-    chipEl.textContent = '';
-    if (cfg.daily) {
-      const m = moduleById(q.moduleId);
-      chipEl.textContent = `${m.icon} ${m.title}`;
-      shell.style.setProperty('--mc', `var(--c-${m.color})`);
-    }
+    howToEl.textContent = mod.howTo || '';
     renderAnswers();
     updateScore();
-    updateGoal();
     if (everPlayed) playQ();
     else shell.classList.add('awaiting-play');
   }
@@ -147,29 +105,12 @@ function runSession(root, cfg) {
     answered = true;
     sessionN++;
     if (result.correct) sessionC++;
-    const justCompleted = State.recordAnswer(
-      q.moduleId, q.levelIdx, result.itemResults, result.correct,
-      result.confusion);
+    State.recordAnswer(q.moduleId, result.itemResults, result.correct, result.confusion);
     updateScore();
-    updateGoal();
-    if (cfg.daily) dailyDone++;
-    track('question_answered', {
-      module: q.moduleId, level: q.levelIdx, kind: q.kind,
-      correct: result.correct, daily: !!cfg.daily,
-    });
+    track('question_answered', { module: q.moduleId, kind: q.kind, correct: result.correct });
 
     renderFeedback(result, extraFeedback);
 
-    if (cfg.daily && dailyDone >= cfg.daily.total) {
-      track('daily_complete', { correct: sessionC, total: cfg.daily.total });
-      setTimeout(() => showDailySummary(), result.correct ? 900 : 2200);
-      return;
-    }
-    if (justCompleted && !cfg.daily) {
-      track('level_complete', { module: cfg.moduleId, level: cfg.levelIdx });
-      setTimeout(() => showCelebration(), result.correct ? 900 : 1800);
-      return;
-    }
     const nextBtn = h('button', { class: 'btn primary', onclick: nextQuestion }, 'Next →');
     actionsEl.append(nextBtn);
     if (result.correct && State.state.settings.autoAdvance) {
@@ -284,12 +225,7 @@ function runSession(root, cfg) {
       slotEls[i].classList.add(userSeq[i] === q.answerSeq[i] ? 'good' : 'bad');
     }
     const extra = [];
-    if (!result.correct) {
-      extra.push(h('div', { class: 'fb-detail' },
-        `Answer: ${q.answerSeq.join(' – ')}`));
-    } else {
-      extra.push(h('div', { class: 'fb-detail' }, q.answerSeq.join(' – ')));
-    }
+    extra.push(h('div', { class: 'fb-detail' }, q.answerSeq.join(' – ')));
     extra.push(h('div', { class: 'fb-compare' },
       h('button', { class: 'btn small', onclick: () => q.playProgressionOnly() }, '▶ Chords only'),
       h('button', { class: 'btn small', onclick: () => q.play() }, '▶ With cadence')));
@@ -364,55 +300,9 @@ function runSession(root, cfg) {
     });
   }
 
-  // ── overlays ───────────────────────────────────────────────────────────────
-  function showCelebration() {
-    const mod = moduleById(cfg.moduleId);
-    const nextIdx = cfg.levelIdx + 1;
-    const hasNext = nextIdx < mod.levels.length;
-    overlayEl.innerHTML = '';
-    overlayEl.classList.remove('hidden');
-    overlayEl.append(h('div', { class: 'celebrate' },
-      h('div', { class: 'celebrate-emoji' }, '🎉'),
-      h('div', { class: 'celebrate-title' }, 'Level complete!'),
-      h('div', { class: 'celebrate-sub' },
-        `${mod.title} · ${mod.levels[cfg.levelIdx].name}`),
-      h('div', { class: 'celebrate-actions' },
-        hasNext ? h('button', {
-          class: 'btn primary',
-          onclick: () => { go(`#/practice/${cfg.moduleId}/${nextIdx}`); },
-        }, `Next: ${mod.levels[nextIdx].name} →`) : null,
-        h('button', {
-          class: 'btn',
-          onclick: () => { overlayEl.classList.add('hidden'); nextQuestion(); },
-        }, 'Keep practicing'),
-        h('button', { class: 'btn ghost', onclick: () => go('#/') }, 'Home'))));
-  }
-
-  function showDailySummary() {
-    overlayEl.innerHTML = '';
-    overlayEl.classList.remove('hidden');
-    const pct = Math.round((sessionC / cfg.daily.total) * 100);
-    overlayEl.append(h('div', { class: 'celebrate' },
-      h('div', { class: 'celebrate-emoji' }, pct >= 80 ? '🔥' : pct >= 50 ? '💪' : '🌱'),
-      h('div', { class: 'celebrate-title' }, 'Workout complete'),
-      h('div', { class: 'celebrate-sub' },
-        `${sessionC} of ${cfg.daily.total} correct (${pct}%)`),
-      h('div', { class: 'celebrate-actions' },
-        h('button', { class: 'btn primary', onclick: () => go('#/') }, 'Done'),
-        h('button', {
-          class: 'btn',
-          onclick: () => {
-            overlayEl.classList.add('hidden');
-            sessionN = 0; sessionC = 0; dailyDone = 0;
-            nextQuestion();
-          },
-        }, 'Go again'))));
-  }
-
   // ── keyboard shortcuts ─────────────────────────────────────────────────────
   function onKeydown(e) {
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
-    if (!overlayEl.classList.contains('hidden')) return;
     if (e.key === 'r' || e.key === 'R') { Audio.unlock(); playQ(); return; }
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();

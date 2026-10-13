@@ -2,53 +2,40 @@
 
 极简但功能齐全的开源音乐练耳 Web 应用。纯静态部署（GitHub Pages / Cloudflare Pages 等），无后端、无账号、无数据库；训练进度仅保存在浏览器本地（localStorage）。电脑与手机浏览器均可使用。
 
+形态参考 [tonedear.com](https://tonedear.com/ear-training/intervals)：**没有关卡、解锁、连击或引导**——首页就是练习列表，点进去直接开练，每个练习自带 Options 面板，题目池、方向、音域全都可调。
+
 准确、可维护的乐理（music theory）数据、音频（audio）与判分（grading）优先于花哨 UI。
 
-## 产品需求（v1 目标）
+## 产品需求与现状（v0.5.0）
 
-1. **绝对音准（absolute pitch）**：无参考音，听单音辨音名
-2. **相对音准 / 调内音级辨别（scale degree）**：先给出调性上下文（终止式 cadence），再辨音级
-3. **音程听辨（interval）**
-4. **和弦类型听辨（chord type）**
-5. **和弦转位的听觉辨别（chord inversion）**
-6. **音色切换（timbre）**：至少基础合成音（synth）+ 钢琴（piano），架构可扩展更多音色
-7. **训练统计**：正确率 / 连对 / 活动热图等，本地持久化
-8. **自定义训练**：题型、关卡（范围）、音域
-
-## 当前状态
-
-以 [earpath-app](https://github.com/abeage1/earpath-app) v0.2.2（commit `f5241f5`，MIT License）为基座导入，本项目当前版本 **0.3.0**。零第三方运行时依赖、无构建步骤的原生 ES Module（ECMAScript Module）静态站。
-
-| 需求 | 现状 |
-|---|---|
-| ① 绝对音准 | ✅ 已有（0.3.0 新增 Absolute Pitch 模块：单音无参考音，按音级类判分） |
-| ② 调内音级 | ✅ 已有（Scale Degrees 模块，先奏终止式建立调性，可切 solfège/数字） |
-| ③ 音程 | ✅ 已有（12 种 × 升/降/同时 + 复合音程） |
-| ④ 和弦类型 | ✅ 已有（13 种：三和弦/七和弦/sus/六和弦/九和弦） |
-| ⑤ 和弦转位 | ⚠️ 部分（仅大三/小三三和弦的 1/2 转位；无七和弦转位） |
-| ⑥ 音色切换 | ❌ 缺失（仅单一合成音色；按安排排在最后阶段，作为计划保留：ROADMAP M4） |
-| ⑦ 统计 | ✅ 已有（逐技能正确率、连击、12 周热图、混淆对分析、JSON 导入导出） |
-| ⑧ 自定义 | ⚠️ 部分（可任选关卡，无音域/题型直选） |
-
-差距与计划见 [docs/ROADMAP.md](docs/ROADMAP.md)；选型证据见 [docs/BASELINE_REVIEW.md](docs/BASELINE_REVIEW.md)。
-
-导入时对上游代码的修改（详见 BASELINE_REVIEW 附录）：
-
-- 删除 `CNAME`（`earpath.app` 为上游自有域名，保留会导致部署指向他人站点）
-- `js/config.js` 中 `POSTHOG_KEY` 置空 → 按上游设计（留空即完全禁用）关闭匿名统计
+| # | 需求 | 现状 |
+|---|---|---|
+| ① | 绝对音准（absolute pitch） | ✅ 单音无参考音辨音名（12 音名可选池，音域可调） |
+| ② | 相对音准/调内音级（scale degree） | ✅ 先奏终止式建立调性再辨音级，solfège/数字可切 |
+| ③ | 音程听辨（interval） | ✅ 16 种音程 × 升/降/和声三方向，池可自选 |
+| ④ | 和弦类型听辨（chord type） | ✅ 34 种（三和弦/七和弦/sus/六和弦/九和弦） |
+| ⑤ | 和弦转位（chord inversion） | ✅ 三和弦 1/2 转位 + 七和弦 1/2/3 转位（dim7 因等音对称刻意不含） |
+| ⑥ | 音色切换（timbre） | ❌ 仅单一合成音；排在最后阶段作为计划（docs/ROADMAP.md M4） |
+| ⑦ | 训练统计 | ✅ 总正确率、逐练习正确率、"常混淆"对及回放；JSON 导入导出 |
+| ⑧ | 自定义训练（题型/范围/音域） | ✅ 每个练习的 Options 面板：题目池多选、方向、调性、音域（MIDI）、长度与开关 |
 
 ## 架构
 
+零第三方运行时依赖、无构建步骤的原生 ES Module（ECMAScript Module）静态站，"仓库根目录即产物"。
+
 | 文件 | 职责 |
 |---|---|
-| `js/theory.js` | 乐理数据：音程 / 和弦 / 音阶 / 音级 / 罗马数字；MIDI↔频率 |
-| `js/curriculum.js` | 模块与关卡注册表、解锁规则 |
-| `js/audio.js` | Web Audio 合成引擎与事件编排（后续音色扩展的重点） |
-| `js/engine.js` | 题目生成与判分（每个模块一个生成器 + 判分函数） |
-| `js/state.js` | localStorage 持久化、逐技能统计、设置 |
-| `js/session.js` / `js/views.js` / `js/piano.js` / `js/ui.js` | 练习界面 / 页面视图 / 屏幕键盘 / DOM 工具 |
-| `tests/` | `node --test` 测试：乐理数据 + 模块注册 + 出题/判分不变量 |
-| `sw.js` | 离线缓存（network-first，联网时即时更新） |
+| `js/theory.js` | 乐理数据：音程/和弦（含转位）/音阶/音级/罗马数字；MIDI↔频率 |
+| `js/curriculum.js` | 练习注册表：展示元数据 + 默认题目配置 + Options 描述 |
+| `js/audio.js` | Web Audio 合成引擎与事件编排 |
+| `js/engine.js` | 题目生成与判分：`generate(moduleId, cfg)` |
+| `js/state.js` | localStorage 持久化（`music-ear-v1`）、逐技能统计、配置合并 |
+| `js/options.js` | 配置驱动的 Options 面板渲染 |
+| `js/session.js` | 练习界面：答题 UI（选择/序列/旋律）、反馈、快捷键 |
+| `js/views.js` | 首页、统计、设置、Guide |
+| `js/piano.js` / `js/ui.js` | 屏幕键盘 / DOM 工具 |
+| `tests/` | `node --test` 测试（乐理数据 + 注册表 + 出题/判分 + 持久化） |
+| `sw.js` | 离线缓存（network-first） |
 
 ## 本地运行
 
@@ -61,27 +48,37 @@ E:/software/miniforge/python.exe -m http.server 8123
 npx serve .
 ```
 
-打开 http://localhost:8123 。`localhost` 下匿名统计已被上游逻辑禁用，不影响开发。
+打开 http://localhost:8123 。
 
 > 开发提示：`python -m http.server` 不发送 `Cache-Control`，浏览器可能用启发式缓存命中旧的 ES Module，导致"改了代码却看不到效果"。改完 `js/*.js` 后若页面行为没变，换一个新端口访问，或在 DevTools 里勾选 "Disable cache" 后硬刷新（service worker 本身是 network-first，但拦不住 HTTP 缓存）。
 
 ## 测试
 
-乐理数据（频率换算、音程半音数、和弦结构与转位、音阶集合、罗马数字、模块注册完整性）是判分的地基，因此由测试守护：
+乐理数据是判分的地基，由测试守护（Node 内置测试运行器，零依赖）：
 
 ```bash
-npm test          # 等价于 node --test（Node 内置测试运行器，零依赖）
+npm test          # 等价于 node --test
 ```
 
-`package.json` 只为测试存在（`type: module` + 一个 test 脚本，无任何依赖）；应用本身仍然是「仓库根目录即产物」的纯静态站。
+`package.json` 只为测试存在（`type: module` + 一个 test 脚本，无任何依赖）。
 
 ## 部署
 
-纯静态：将仓库根目录直接发布到任意静态托管（GitHub Pages / Cloudflare Pages / Netlify），无构建步骤。若部署到子路径（如 `https://<user>.github.io/music-ear/`），需核对 `manifest.webmanifest` 的 `start_url` / `scope` 与 `sw.js` 缓存列表是否兼容子路径（见 ROADMAP 风险项）。
+纯静态：将仓库根目录直接发布到任意静态托管（GitHub Pages / Cloudflare Pages / Netlify），无构建步骤。若部署到子路径（如 `https://<user>.github.io/music-ear/`），需核对 `manifest.webmanifest` 的 `start_url`/`scope` 与 `sw.js` 缓存路径是否兼容子路径（见 ROADMAP 风险项）。
+
+## 数据与隐私
+
+- 进度与设置存于 localStorage（key `music-ear-v1`），可 JSON 导出/导入；无任何网络请求（不含分析与遥测）
+- 0.3.x 及更早使用旧 key `earpath-v1` 与关卡制数据结构，不兼容且不会被读取
 
 ## 上游归属与许可证
 
-- 本仓库包含源自 [earpath-app](https://github.com/abeage1/earpath-app)（v0.2.2，commit `f5241f5`）的代码，依其 **MIT License** 使用。
-- `LICENSE` 为上游原始许可证文本（Copyright (c) 2026 abeage1），按 MIT 条款原样保留。
-- `CHANGELOG.md` 中 v0.2.2 及以前条目、`marketing/` 目录为上游历史与产品材料，仅作溯源保留，不代表本项目现状。
-- 本项目为独立分支（fork），并非上游官方项目；再分发须保留 `LICENSE` 与本说明。
+- 本仓库包含源自 [earpath-app](https://github.com/abeage1/earpath-app)（v0.2.2，commit `f5241f5`）的代码，依其 **MIT License** 使用；`LICENSE` 为上游原始许可证文本（Copyright (c) 2026 abeage1），按 MIT 条款原样保留
+- `CHANGELOG.md` 中 0.2.2 及以前条目、`marketing/` 目录为上游历史与产品材料，仅作溯源保留
+- 0.4.0 起重写为无关卡的扁平练习形态（参考 tonedear 的交互模式，未使用其代码）
+- 本项目为独立分支（fork），并非上游官方项目；再分发须保留 `LICENSE` 与本说明
+
+## 文档
+
+- `docs/BASELINE_REVIEW.md` — 候选基座对比、证据与选型理由
+- `docs/ROADMAP.md` — 里程碑、验收标准与风险
