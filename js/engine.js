@@ -135,11 +135,9 @@ function genInterval(mod, cfg) {
   const picked = pickWeighted(cands);
   const semis = INTERVALS[picked.id].semis;
 
-  // Keep both notes inside C3–C6 (48–84).
-  let rootLo = 48, rootHi = 72;
-  if (picked.dir === 'd') rootLo = Math.max(48, 48 + semis);
-  else rootHi = Math.min(72, 84 - semis);
-  const root = randInt(rootLo, Math.max(rootLo, rootHi));
+  // The pair is fixed — lower note at `root`, upper at root+semis — and stays
+  // inside C3–C6 (48–84) whatever the direction, which only reorders the two.
+  const root = randInt(48, Math.min(72, 84 - semis));
 
   const dirs = [...new Set(cfg.dirs)];
   let lastDir = picked.dir;

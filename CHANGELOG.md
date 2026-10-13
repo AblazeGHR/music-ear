@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.3 — 2026-10-13
+
+- 🎵 **Interval directions now reorder the same two notes instead of changing them.** Descending used to re-voice the interval below the root (an ascending C→G became C→F when flipped), so only the first note stayed the same. The pair is now fixed — lower note first ascending, upper note first descending, both together harmonic; the direction only changes the order or simultaneity, never the pitches. The register logic was simplified to match (one pair, always inside C3–C6)
+
 ## 0.6.2 — 2026-10-13
 
 - 🔁 **After a wrong answer, replay plays both.** The big play button (and the replay key, and the circle gesture) used to re-play only the question itself — i.e. only the correct sound — after a miss. It now plays your pick and then the real answer, the same A/B the “Your pick / Answer” buttons offer, from the same root

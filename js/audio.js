@@ -109,16 +109,21 @@ export function playNote(midi, dur = 0.8, vel = 1) {
 }
 
 // dir: 'a' ascending, 'd' descending, 'h' harmonic. rootMidi is the first note.
+// The direction only changes the order (or simultaneity) of the pair — the two
+// pitches are always the same lower+upper notes, so switching direction never
+// changes what is heard, only how it is played.
 export function intervalEvents(rootMidi, semis, dir, opts = {}) {
   const dur = opts.noteDur ?? 0.7;
   const gap = 0.18;
-  const other = dir === 'd' ? rootMidi - semis : rootMidi + semis;
+  const lower = rootMidi;
+  const upper = rootMidi + semis;
   if (dir === 'h') {
-    return [{ midis: [rootMidi, other], at: 0, dur: dur + 0.35 }];
+    return [{ midis: [lower, upper], at: 0, dur: dur + 0.35 }];
   }
+  const [first, second] = dir === 'd' ? [upper, lower] : [lower, upper];
   return [
-    { midi: rootMidi, at: 0, dur },
-    { midi: other, at: dur + gap, dur },
+    { midi: first, at: 0, dur },
+    { midi: second, at: dur + gap, dur },
   ];
 }
 

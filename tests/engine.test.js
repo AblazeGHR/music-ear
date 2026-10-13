@@ -143,6 +143,28 @@ test('interval replays re-voice the question in a different direction', () => {
   assert.equal(typeof chord.replay, 'undefined');
 });
 
+test('interval directions keep the same pair of notes — order or simultaneity only', () => {
+  const notesOf = events => (events.length === 1 ? [...events[0].midis] : events.map(e => e.midi));
+  const key = arr => [...arr].sort((x, y) => x - y).join(',');
+  const cfg = { items: ['P5'], dirs: ['a', 'd', 'h'] };
+
+  for (let i = 0; i < 30; i++) {
+    const q = generate('intervals', cfg);
+    const pairs = new Map([[q.dir, notesOf(q.events)]]);
+    for (let k = 0; k < 60 && pairs.size < 3; k++) {
+      q.replayNext();
+      pairs.set(q.dir, notesOf(q.events));
+    }
+    const asc = pairs.get('a'), desc = pairs.get('d'), harm = pairs.get('h');
+    assert.ok(asc && desc && harm, 'all three directions seen');
+    assert.equal(key(asc), key(desc), 'ascending and descending use the same two pitches');
+    assert.equal(key(asc), key(harm), 'harmonic uses the same two pitches');
+    assert.deepEqual(desc, [...asc].reverse(), 'descending is the ascending pair reversed');
+    // the pair itself never moves while replaying within one question
+    assert.ok(asc[1] > asc[0], 'ascending starts on the lower note');
+  }
+});
+
 test('melody statistics keys follow the configuration, not a level index', () => {
   const base = MODULES.find(m => m.id === 'melodies').defaults;
   const a = generate('melodies', { ...base, length: 5, firstGiven: false, leapy: true, chromatic: 0.18 });
