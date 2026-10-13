@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.6.0 — 2026-10-13
+
+- ✋ **Gesture mode** — eyes-closed practice for multiple-choice exercises. The switch in the practice header hands the whole screen to three gestures: **tap N times = option N** (a tick per tap so you can count, committed when the tap window closes), **press and hold = next question**, **draw a circle = play / replay**. Everything else — back, the Options panel, keyboard shortcuts — is locked out until the switch is turned off, so nothing can be hit by accident with your eyes closed
+- 🔔 Eyes-closed feedback: a blip when the answer is right; a wrong answer automatically plays your pick and then the real one, so the comparison needs no buttons
+- ↕️ **Answer buttons now always use a fixed musical order** — intervals ascending by semitone, scale degrees ascending, numerals I–vi, and so on — instead of the order options happened to be clicked in. Pools are stored in that order too, so exports read the same way
+- Offered only where it helps: multiple-choice exercises with 8 or fewer options in the current pool. Progressions, dictation and the twelve-note pool keep their normal input
+- Tests: 42 (10 new for the gesture recognizer: tap windows, hold, circle vs. its lookalikes; plus canonical-order assertions)
+
 ## 0.5.1 — 2026-10-13
 
 Bug fix: the Options panel's controls were built from values captured at render time, so their displayed state drifted from what was actually enabled.

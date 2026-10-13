@@ -7,6 +7,7 @@ import * as Engine from './engine.js';
 import * as State from './state.js';
 import { moduleById } from './curriculum.js';
 import { renderOptions } from './options.js';
+import { createRecognizer, bindPointerSurface } from './gesture.js';
 import { createPiano } from './piano.js';
 import { midiName } from './theory.js';
 import { track } from './analytics.js';
@@ -47,6 +48,56 @@ function runSession(root, cfg) {
   const mod = moduleById(cfg.moduleId);
   const optionsEl = renderOptions(mod, () => { if (!answered) nextQuestion(); });
 
+  // ── gesture mode (eyes-closed input) ───────────────────────────────────────
+  // Only multiple-choice questions with a small pool get it: counting taps to
+  // twelve while blind is not a skill anyone needs, so the switch simply is
+  // not offered there.
+  const MAX_GESTURE_OPTIONS = 8;
+  const KBD_HINT = '1–9 answer · R replay · ⏎ next · ⌫ undo';
+  const GESTURE_HINT = 'Tap ×N = option N · Hold = next · Circle = replay';
+  let gestureOn = false;
+  let compareTimers = [];
+  let lastChoiceId = null;
+
+  const gestureBtn = h('button', {
+    class: 'gesture-switch', role: 'switch', 'aria-checked': 'false',
+    onclick: () => setGesture(!gestureOn),
+  }, 'Gesture');
+  const kbdEl = h('div', { class: 's-kbd' }, KBD_HINT);
+  const overlay = h('div', { class: 'gesture-overlay' });
+
+  const recognizer = createRecognizer({
+    onTap: () => { if (gestureOn) Audio.playNote(84, 0.045); },   // count ticks
+    onCommit: n => { if (gestureOn) submitByCount(n); },
+    onHold: () => { if (gestureOn) { clearAuto(); nextQuestion(); } },
+    onCircle: () => { if (gestureOn) playQ(); },
+  });
+  const unbindGestures = bindPointerSurface(overlay, recognizer);
+
+  function setGesture(on) {
+    gestureOn = on;
+    shell.classList.toggle('gesture-on', on);
+    gestureBtn.classList.toggle('on', on);
+    gestureBtn.setAttribute('aria-checked', String(on));
+    kbdEl.textContent = on ? GESTURE_HINT : KBD_HINT;
+    recognizer.reset();
+    if (on) Audio.playNote(76, 0.1);   // audible "it's on" for lowered eyes
+  }
+
+  // Tap count → answer. Choice questions only; ignored before the first play.
+  function submitByCount(n) {
+    if (!q || answered || !everPlayed) return;
+    if (q.kind !== 'choice') return;
+    if (n < 1 || n > q.options.length) return;
+    answerChoice(q.options[n - 1].id);
+  }
+
+  function syncGestureAffordance() {
+    const eligible = !!q && q.kind === 'choice' && q.options.length <= MAX_GESTURE_OPTIONS;
+    gestureBtn.classList.toggle('hidden', !eligible);
+    if (!eligible && gestureOn) setGesture(false);
+  }
+
   const shell = h('div', { class: 'session', style: { '--mc': `var(--c-${cfg.color})` } },
     h('header', { class: 's-head' },
       h('button', {
@@ -56,12 +107,13 @@ function runSession(root, cfg) {
       h('div', { class: 's-title' },
         h('div', {}, cfg.title),
         h('div', { class: 's-sub' }, cfg.blurb)),
-      scoreEl),
+      scoreEl, gestureBtn),
     h('main', { class: 's-body' },
       h('div', { class: 's-stage' }, playBtn, promptEl, howToEl),
       answersEl, feedbackEl, actionsEl,
       optionsEl,
-      h('div', { class: 's-kbd' }, '1–9 answer · R replay · ⏎ next · ⌫ undo')));
+      kbdEl),
+    overlay);
   root.append(shell);
 
   // ── helpers ────────────────────────────────────────────────────────────────
@@ -84,6 +136,10 @@ function runSession(root, cfg) {
 
   function nextQuestion() {
     clearAuto();
+    for (const t of compareTimers) clearTimeout(t);
+    compareTimers = [];
+    recognizer.reset();
+    lastChoiceId = null;
     q = cfg.next();
     answered = false;
     userSeq = [];
@@ -97,6 +153,7 @@ function runSession(root, cfg) {
     howToEl.textContent = mod.howTo || '';
     renderAnswers();
     updateScore();
+    syncGestureAffordance();
     if (everPlayed) playQ();
     else shell.classList.add('awaiting-play');
   }
@@ -110,6 +167,17 @@ function runSession(root, cfg) {
     track('question_answered', { module: q.moduleId, kind: q.kind, correct: result.correct });
 
     renderFeedback(result, extraFeedback);
+
+    // Eyes-closed feedback: a blip means right; wrong answers play your pick
+    // and then the real one, so the comparison is heard without any button.
+    if (gestureOn) {
+      if (result.correct) {
+        Audio.playNote(91, 0.14);
+      } else if (q.playOption && lastChoiceId !== null) {
+        compareTimers.push(setTimeout(() => q.playOption(lastChoiceId), 350));
+        compareTimers.push(setTimeout(() => q.playOption(q.answerId), 1250));
+      }
+    }
 
     const nextBtn = h('button', { class: 'btn primary', onclick: nextQuestion }, 'Next →');
     actionsEl.append(nextBtn);
@@ -147,6 +215,7 @@ function runSession(root, cfg) {
 
   function answerChoice(id) {
     if (answered || !everPlayed) return;
+    lastChoiceId = id;
     const result = q.grade(id);
     for (let i = 0; i < q.options.length; i++) {
       const opt = q.options[i], btn = optionBtns[i];
@@ -302,6 +371,7 @@ function runSession(root, cfg) {
 
   // ── keyboard shortcuts ─────────────────────────────────────────────────────
   function onKeydown(e) {
+    if (gestureOn) return;   // eyes-closed mode: gestures are the only input
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
     if (e.key === 'r' || e.key === 'R') { Audio.unlock(); playQ(); return; }
     if (e.key === 'Enter' || e.key === ' ') {
@@ -332,6 +402,8 @@ function runSession(root, cfg) {
 
   return () => {
     document.removeEventListener('keydown', onKeydown);
+    unbindGestures();
+    for (const t of compareTimers) clearTimeout(t);
     clearAuto();
     Audio.stopAll();
   };

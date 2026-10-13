@@ -69,17 +69,31 @@ export function resetAll() {
 // ── Exercise configuration ───────────────────────────────────────────────────
 
 // The live question configuration for a module: registry defaults with the
-// user's stored overrides on top.
+// user's stored overrides on top. Chip pools (question items, directions,
+// degrees, numerals…) are returned in the registry's canonical order — never
+// the order the user happened to click them in — so the answer buttons are
+// always laid out the same way (intervals ascending by semitone, degrees
+// ascending, numerals I–vi, …).
 export function moduleConfig(id) {
   const mod = moduleById(id);
   if (!mod) return null;
-  return { ...mod.defaults, ...(state.settings.exercises[id] || {}) };
+  const cfg = { ...mod.defaults, ...(state.settings.exercises[id] || {}) };
+  for (const opt of mod.options) {
+    if (opt.type !== 'chips' || !Array.isArray(cfg[opt.key])) continue;
+    const index = new Map(opt.choices.map(([v], i) => [v, i]));
+    const rank = v => (index.has(v) ? index.get(v) : Number.MAX_SAFE_INTEGER);
+    cfg[opt.key] = [...cfg[opt.key]].sort((a, b) => rank(a) - rank(b));
+  }
+  return cfg;
 }
 
 // Write one option back. The stored object is always the full merged config,
-// so an export stays readable and a later registry change can't half-apply.
+// so an export stays readable and a later registry change can't half-apply —
+// and it goes through moduleConfig() again so pools are stored in canonical
+// order (what the app actually renders), not click order.
 export function setExerciseOption(id, key, value) {
   state.settings.exercises[id] = { ...moduleConfig(id), [key]: value };
+  state.settings.exercises[id] = moduleConfig(id);
   save();
 }
 

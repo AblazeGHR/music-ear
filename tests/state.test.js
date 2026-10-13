@@ -20,6 +20,26 @@ test('moduleConfig merges registry defaults with stored overrides', () => {
   assert.deepEqual(State.moduleConfig('intervals'), moduleById('intervals').defaults);
 });
 
+test('chip pools always come back in the registry’s canonical order', () => {
+  State.resetAll();
+  // Clicked wildly out of order; the config must read back musically sorted.
+  State.setExerciseOption('intervals', 'items', ['P5', 'm2', 'M3']);
+  assert.deepEqual(State.moduleConfig('intervals').items, ['m2', 'M3', 'P5']);
+
+  State.setExerciseOption('degrees', 'items', ['sol', 'do', 'mi']);
+  assert.deepEqual(State.moduleConfig('degrees').items, ['do', 'mi', 'sol']);
+
+  State.setExerciseOption('progressions', 'pool', ['V', 'I', 'vi']);
+  assert.deepEqual(State.moduleConfig('progressions').pool, ['I', 'V', 'vi']);
+
+  State.setExerciseOption('absolute', 'items', [9, 0, 4]);
+  assert.deepEqual(State.moduleConfig('absolute').items, [0, 4, 9]);
+
+  // The stored override keeps whatever the user clicked; only the read path sorts.
+  assert.deepEqual(State.state.settings.exercises.intervals.items, ['m2', 'M3', 'P5'],
+    'writes store the canonical order too, via the merged config');
+});
+
 test('the configuration survives a save/load round-trip', () => {
   State.resetAll();
   State.setExerciseOption('absolute', 'range', [40, 60]);
