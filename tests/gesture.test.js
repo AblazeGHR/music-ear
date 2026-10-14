@@ -14,6 +14,7 @@ function recorder(options = {}) {
     onTap: n => calls.push(['tap', n]),
     onCommit: n => calls.push(['commit', n]),
     onHold: () => calls.push(['hold']),
+    onSwipe: () => calls.push(['swipe']),
     onCircle: () => calls.push(['circle']),
   };
   return { calls, rec: createRecognizer(handlers, { tapWindowMs: 30, holdMs: 40, ...options }) };
@@ -83,21 +84,44 @@ test('a circle fires onCircle and never a tap', () => {
   assert.deepEqual(calls, [['circle']]);
 });
 
-test('a straight drag is ignored entirely', () => {
+test('a straight line fires onSwipe and never a tap', () => {
   const { calls, rec } = recorder();
   rec.pointerDown(100, 100, 0);
-  rec.pointerMove(140, 100, 30);
-  rec.pointerMove(180, 100, 60);
-  rec.pointerUp(220, 100, 90);
+  rec.pointerMove(160, 100, 30);
+  rec.pointerMove(220, 100, 60);
+  rec.pointerUp(280, 100, 90);
+  assert.deepEqual(calls, [['swipe']]);
+});
+
+test('a swipe discards taps that were still waiting to commit', async () => {
+  const { calls, rec } = recorder();
+  tap(rec, 100, 100, 0);
+  rec.pointerDown(100, 100, 10);
+  rec.pointerMove(170, 100, 40);
+  rec.pointerUp(240, 100, 80);
+  await sleep(50);
+  assert.deepEqual(calls, [['tap', 1], ['swipe']], 'no commit — the line was meant, not the tap');
+});
+
+test('a curve that is neither a line nor a loop is ignored', () => {
+  const { calls, rec } = recorder();
+  // A half circle, drawn from the arc: too curved to be a line, too short of a
+  // loop to be a circle.
+  rec.pointerDown(280, 100, 0);
+  for (let i = 1; i <= 16; i++) {
+    const a = Math.PI * (i / 16);
+    rec.pointerMove(200 + 80 * Math.cos(a), 100 + 80 * Math.sin(a), i * 12);
+  }
+  rec.pointerUp(120, 100, 200);
   assert.deepEqual(calls, []);
 });
 
-test('a long drag is not mistaken for a hold', () => {
+test('a long drag is not mistaken for a hold — it reads as a swipe', () => {
   const { calls, rec } = recorder();
   rec.pointerDown(100, 100, 0);
   rec.pointerMove(160, 100, 40);
   rec.pointerUp(220, 100, 80);
-  assert.deepEqual(calls, []);
+  assert.deepEqual(calls, [['swipe']]);
 });
 
 test('reset() drops a pending count without committing', async () => {

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.5 — 2026-10-13
+
+- 🔄 **Gesture vocabulary reshuffled, as requested**: a **straight swipe** now moves to the next question (it used to do nothing), and a **long press** now **turns gesture mode off** (it used to mean "next"). Tap ×N = option N and circle = play / replay are unchanged
+- The swipe is recognised by net travel over path length (a straight line is ~1, an arc well below), so partial loops and curves stay ignored instead of being read as a line — and a swipe, like a hold, discards taps that were still waiting to commit rather than submitting a half-intended answer
+- The help popup and the on-screen legend reflect the new mapping
+
 ## 0.6.4 — 2026-10-13
 
 - ⚡ **UI feedback sounds are near-instant.** Tap ticks, the right-answer blip and the gesture-on chime were scheduled with the 60 ms lookahead meant for multi-note phrases; they now use a few milliseconds, so a tap is heard as immediately as the device allows

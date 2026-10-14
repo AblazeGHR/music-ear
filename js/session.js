@@ -55,7 +55,7 @@ function runSession(root, cfg) {
   // not offered there.
   const MAX_GESTURE_OPTIONS = 8;
   const KBD_HINT = '1–9 answer · R replay · ⏎ next · ⌫ undo';
-  const GESTURE_HINT = 'Tap ×N = option N · Hold = next · Circle = replay';
+  const GESTURE_HINT = 'Tap ×N = option N · Swipe = next · Hold = off · Circle = replay';
   let gestureOn = false;
   let compareRun = 0;          // generation counter for the A/B playback
   let lastChoiceId = null;
@@ -78,7 +78,8 @@ function runSession(root, cfg) {
   const recognizer = createRecognizer({
     onTap: () => { if (gestureOn) Audio.playNote(84, 0.045, 1, { lead: UI_LEAD }); },   // count ticks
     onCommit: n => { if (gestureOn) submitByCount(n); },
-    onHold: () => { if (gestureOn) { clearAuto(); nextQuestion(); } },
+    onSwipe: () => { if (gestureOn) { clearAuto(); nextQuestion(); } },   // straight line → next
+    onHold: () => { if (gestureOn) setGesture(false); },                  // hold → leave
     onCircle: () => { if (gestureOn) playQ(); },
   }, tapWindowMs > 0 ? { tapWindowMs } : {});
   const unbindGestures = bindPointerSurface(overlay, recognizer);
@@ -112,8 +113,9 @@ function runSession(root, cfg) {
         h('div', { class: 'gh-rows' },
           ghRow('Tap once', 'the 1st answer button'),
           ghRow('Tap N times', 'the Nth answer button — a tick plays on every tap so you can count with your eyes closed'),
-          ghRow('Press and hold', 'Next → — or skip the question if you have not answered'),
-          ghRow('Draw a circle', '▶ Play / replay — after a wrong answer it plays your pick, then the real one')),
+          ghRow('Swipe a line', 'Next → — or skip the question if you have not answered'),
+          ghRow('Draw a circle', '▶ Play / replay — after a wrong answer it plays your pick, then the real one'),
+          ghRow('Long press', 'turns gesture mode off')),
         h('p', { class: 'tiny muted' }, 'A wrong answer plays your pick and then the real one, so the comparison needs no buttons. Everything else — back, Options, keyboard — stays locked until the switch is off.'),
         h('div', { class: 'gesture-help-close' },
           h('button', { class: 'btn primary', onclick: hideHelp }, 'Got it'))));

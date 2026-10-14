@@ -1,11 +1,12 @@
 // gesture.js — eyes-closed input for multiple-choice exercises.
 //
-// Three disjoint gestures (they differ in movement and duration, so they can
+// Four disjoint gestures (they differ in movement and duration, so they can
 // never be confused with each other):
-//   • tap / N quick taps → pick the Nth option (committed when the tap window
+//   • tap / N quick taps   → pick the Nth option (committed when the tap window
 //     closes, so "tap, tap" can mean "option 2" rather than two option-1 picks)
-//   • press and hold     → next question (skips an ungraded one)
-//   • circle             → play / replay
+//   • swipe a straight line → next question (skips an ungraded one)
+//   • press and hold       → leave gesture mode
+//   • circle               → play / replay
 //
 // The core is a pure state machine taking explicit coordinates and timestamps,
 // so it is unit-tested without a browser; bindPointerSurface() at the bottom is
@@ -15,6 +16,8 @@ export const GESTURE_DEFAULTS = {
   tapWindowMs: 400,        // time allowed between taps of one count
   holdMs: 500,             // stillness beyond this reads as a hold
   moveTolerance: 14,       // px of travel still considered "not moving"
+  swipeMinDist: 40,        // px of net travel for a deliberate straight swipe
+  swipeMinStraightness: 0.9, // net travel / path length — near 1 reads as a line
   circleMinAngle: 1.5 * Math.PI,  // how much arc counts as a circle
   circleMinRadius: 16,     // px — smaller loops are jitter
   circleMaxRadius: 240,    // px — larger paths are probably a drag
@@ -58,6 +61,12 @@ export function createRecognizer(handlers, options = {}) {
 
       if (maxMove > cfg.moveTolerance && isCircle(path, cfg)) {
         handlers.onCircle();
+      } else if (maxMove > cfg.moveTolerance && isSwipe(path, cfg)) {
+        // A deliberate line wins over taps still waiting to commit, for the
+        // same reason a hold does: they were not an intended answer.
+        clearTapTimer();
+        tapCount = 0;
+        handlers.onSwipe();
       } else if (maxMove <= cfg.moveTolerance && duration >= cfg.holdMs) {
         // A hold wins over taps still waiting to commit — they were almost
         // certainly part of reaching for the hold, not an intended answer.
@@ -70,7 +79,7 @@ export function createRecognizer(handlers, options = {}) {
         clearTapTimer();
         tapTimer = setTimeout(commitTaps, cfg.tapWindowMs);
       }
-      // Anything else (a drag or a stray swipe) is ignored on purpose.
+      // Anything else (a curve that is neither a line nor a loop) is ignored.
       path = [];
     },
 
@@ -85,21 +94,29 @@ export function createRecognizer(handlers, options = {}) {
   };
 }
 
-// True when the pointer swept far enough around its own centroid to read as a
-// loop. Direction-agnostic (both clockwise and counter-clockwise count).
-export function isCircle(path, cfg = GESTURE_DEFAULTS) {
-  if (path.length < 8) return false;
-  const span = path[path.length - 1].t - path[0].t;
-  if (span <= 0 || span > cfg.circleMaxMs) return false;
-
+// Geometric summary of one gesture's path: how far it travelled, how much it
+// curved around its own centroid, how straight it was, and how long it took.
+function pathShape(path, cfg) {
   let cx = 0, cy = 0;
   for (const p of path) { cx += p.x; cy += p.y; }
   cx /= path.length; cy /= path.length;
 
-  let radius = 0;
-  for (const p of path) radius = Math.max(radius, Math.hypot(p.x - cx, p.y - cy));
-  if (radius < cfg.circleMinRadius || radius > cfg.circleMaxRadius) return false;
+  let radius = 0, displacement = 0;
+  for (const p of path) {
+    radius = Math.max(radius, Math.hypot(p.x - cx, p.y - cy));
+    displacement = Math.max(displacement, Math.hypot(p.x - path[0].x, p.y - path[0].y));
+  }
 
+  let pathLength = 0;
+  for (let i = 1; i < path.length; i++) {
+    pathLength += Math.hypot(path[i].x - path[i - 1].x, path[i].y - path[i - 1].y);
+  }
+  const straightness = pathLength > 0 ? Math.min(1, displacement / pathLength) : 0;
+
+  const duration = path[path.length - 1].t - path[0].t;
+  if (duration <= 0 || duration > cfg.circleMaxMs) {
+    return { duration, radius, displacement, straightness, angle: 0 };
+  }
   let angle = 0;
   let prev = Math.atan2(path[0].y - cy, path[0].x - cx);
   for (let i = 1; i < path.length; i++) {
@@ -110,7 +127,26 @@ export function isCircle(path, cfg = GESTURE_DEFAULTS) {
     angle += d;
     prev = a;
   }
-  return Math.abs(angle) >= cfg.circleMinAngle;
+  return { duration, radius, displacement, straightness, angle };
+}
+
+// True when the pointer swept far enough around its own centroid to read as a
+// loop. Direction-agnostic (both clockwise and counter-clockwise count).
+export function isCircle(path, cfg = GESTURE_DEFAULTS) {
+  if (path.length < 8) return false;
+  const shape = pathShape(path, cfg);
+  return shape.duration > 0
+    && shape.radius >= cfg.circleMinRadius && shape.radius <= cfg.circleMaxRadius
+    && Math.abs(shape.angle) >= cfg.circleMinAngle;
+}
+
+// True when the pointer travelled far along a straight line. Measured as net
+// travel over path length (a line is ~1, an arc well below), which separates it
+// from both loops and curves — a curve reads as neither gesture and is ignored.
+export function isSwipe(path, cfg = GESTURE_DEFAULTS) {
+  const shape = pathShape(path, cfg);
+  return shape.displacement >= cfg.swipeMinDist
+    && shape.straightness >= cfg.swipeMinStraightness;
 }
 
 // Feeds real pointer events into a recognizer. Capture keeps move/up coming
