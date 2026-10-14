@@ -66,7 +66,7 @@ function statCard(icon, big, label, sub) {
     sub ? h('div', { class: 'tiny muted' }, sub) : null);
 }
 
-export function renderStats(root) {
+export function renderStats(root, focusModuleId = null) {
   const s = State.state;
   const practiced = MODULES.filter(m => State.moduleStats(m.id).a > 0).length;
   const confusions = State.topConfusions(8);
@@ -75,7 +75,7 @@ export function renderStats(root) {
     moduleId === 'intervals' ? INTERVALS[id]?.name
     : moduleId === 'chords' ? CHORDS[id]?.name
     : moduleId === 'scales' ? SCALES[id]?.name
-    : moduleId === 'degrees' ? DEGREES[id?.split(':').pop()]?.solfege ?? id
+    : moduleId === 'degrees' ? DEGREES[id]?.solfege ?? id
     : moduleId === 'absolute' ? pitchClassName(id)
     : id;
 
@@ -95,12 +95,35 @@ export function renderStats(root) {
         { midi: root, at: 0, dur: 0.6 },
         { midi: root + deg.semis, at: 0.75, dur: 0.9 },
       ]);
-    } else if (moduleId === 'absolute' && typeof id === 'number') {
-      Audio.playEvents([{ midi: root + id, at: 0, dur: 0.9 }]);
+    } else if (moduleId === 'absolute' && id !== undefined && id !== null && id !== '') {
+      Audio.playEvents([{ midi: root + Number(id), at: 0, dur: 0.9 }]);
     }
   }
 
   const playable = mid => ['intervals', 'chords', 'scales', 'degrees', 'absolute'].includes(mid);
+
+  // One answer's row: name, how often it was missed, and — expanded — what got
+  // picked instead, as a share of that answer's misses.
+  const answerRow = (moduleId, ans) => {
+    const wrongPct = Math.round((ans.wrongTotal / ans.a) * 100);
+    return h('details', { class: 'ans-row' },
+      h('summary', {},
+        h('span', { class: 'ans-name' }, confName(moduleId, ans.id) ?? ans.id),
+        h('span', { class: 'ans-bar' },
+          h('span', { class: 'ans-fill', style: { width: `${wrongPct}%` } })),
+        h('span', { class: 'ans-num' },
+          ans.wrongTotal ? `${wrongPct}% wrong` : 'all right',
+          h('span', { class: 'tiny muted' }, ` ${ans.wrongTotal}/${ans.a}`))),
+      ans.wrong.length
+        ? h('div', { class: 'wrong-list' },
+            ans.wrong.map(([pickedId, n]) => h('div', { class: 'wrong-row' },
+              h('span', {}, confName(moduleId, pickedId) ?? pickedId),
+              h('span', { class: 'tiny muted' },
+                `${n}× · ${Math.round((n / ans.wrongTotal) * 100)}% of misses`))))
+        : h('div', { class: 'wrong-list tiny muted' }, 'No misses recorded for this answer.'));
+  };
+
+  let focusRef = null;
 
   const page = h('div', { class: 'page' },
     topbar('stats'),
@@ -114,17 +137,34 @@ export function renderStats(root) {
     h('div', { class: 'stat-modules' },
       MODULES.map(mod => {
         const ms = State.moduleStats(mod.id);
-        return h('div', { class: 'stat-mod card', style: { '--mc': `var(--c-${mod.color})` } },
-          h('span', { class: 'mc-icon' }, mod.icon),
-          h('div', { class: 'sm-main' },
-            h('div', { class: 'sm-title' }, mod.title),
-            h('div', { class: 'sm-bar' },
-              h('div', {
-                class: 'sm-fill',
-                style: { width: `${ms.a ? (ms.c / ms.a) * 100 : 0}%` },
-              }))),
-          h('div', { class: 'sm-side' }, ms.a ? fmtPct(ms.c, ms.a) : '—',
-            h('div', { class: 'tiny muted' }, ms.a ? `${ms.a} answers` : '')));
+        const breakdown = State.answerBreakdown(mod.id);
+        const det = h('details', { class: 'stat-mod card', style: { '--mc': `var(--c-${mod.color})` } },
+          h('summary', { class: 'sm-sum' },
+            h('span', { class: 'mc-icon' }, mod.icon),
+            h('div', { class: 'sm-main' },
+              h('div', { class: 'sm-title' }, mod.title),
+              h('div', { class: 'sm-bar' },
+                h('div', {
+                  class: 'sm-fill',
+                  style: { width: `${ms.a ? (ms.c / ms.a) * 100 : 0}%` },
+                }))),
+            h('div', { class: 'sm-side' }, ms.a ? fmtPct(ms.c, ms.a) : '—',
+              h('div', { class: 'tiny muted' }, ms.a ? `${ms.a} answers` : '')),
+            h('span', { class: 'sm-chev' }, '›')),
+          h('div', { class: 'sm-body' },
+            h('button', {
+              class: 'btn small ghost',
+              onclick: () => go(`#/practice/${mod.id}`),
+            }, `▶ Practice ${mod.title}`),
+            breakdown.length
+              ? h('div', { class: 'ans-list' },
+                  h('div', { class: 'tiny muted ans-head' },
+                    'Per-answer accuracy, worst first — open an answer for what gets picked instead'),
+                  breakdown.map(ans => answerRow(mod.id, ans)))
+              : h('div', { class: 'tiny muted' },
+                  'Per-answer detail appears once you have answered a few questions.')));
+        if (focusModuleId === mod.id) focusRef = det;
+        return det;
       })),
 
     confusions.length ? h('h2', {}, 'Often confused') : null,
@@ -147,6 +187,12 @@ export function renderStats(root) {
       : null);
 
   root.append(page);
+  // Deep link from a practice screen: open that exercise's breakdown and bring
+  // it into view.
+  if (focusRef) {
+    focusRef.open = true;
+    focusRef.scrollIntoView({ block: 'center' });
+  }
   return () => { Audio.stopAll(); };
 }
 

@@ -4,11 +4,13 @@ import * as State from './state.js';
 import * as Audio from './audio.js';
 import { renderHome, renderStats, renderSettings, renderGuide } from './views.js';
 import { renderPractice } from './session.js';
+import { MODULES } from './curriculum.js';
 import { initAnalytics, track } from './analytics.js';
 import { mountFeedback, setFeedbackVisible } from './feedback.js';
 
 const app = document.getElementById('app');
 let cleanup = null;
+const moduleIds = new Set(MODULES.map(m => m.id));
 
 function route() {
   if (cleanup) { try { cleanup(); } catch { /* view already gone */ } cleanup = null; }
@@ -24,7 +26,9 @@ function route() {
 
   if (!view) cleanup = renderHome(app);
   else if (view === 'practice' && a) cleanup = renderPractice(app, a);
-  else if (view === 'stats') cleanup = renderStats(app);
+  // #/stats and #/stats/<moduleId> — the latter deep-links straight into one
+  // exercise's breakdown (used by the shortcut on each practice screen).
+  else if (view === 'stats') cleanup = renderStats(app, moduleIds.has(a) ? a : null);
   else if (view === 'settings') cleanup = renderSettings(app);
   else if (view === 'guide') cleanup = renderGuide(app);
   else cleanup = renderHome(app);

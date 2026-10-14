@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.0 — 2026-10-14
+
+- 📊 **Per-answer statistics for multiple-choice exercises.** Every answer now records how often it came up, how often it was right, and — when it was missed — what got picked instead. The Stats page expands each exercise: the first level lists every answer's miss rate (worst first), and opening an answer shows the wrong-choice distribution as a share of that answer's misses ("Perfect 5th — 33% wrong · Major 3rd 2× · Octave 1×")
+- 🔗 **Two-way shortcuts between practice and stats.** Each practice screen's top bar has a 📊 button that jumps straight to that exercise's breakdown (deep link `#/stats/<exercise>`, opens and scrolls to it), and each exercise's stats card has a ▶ Practice button back
+- Pitch questions now contribute to the confusion statistics like the other choice exercises (they always were multiple choice)
+
 ## 0.6.5 — 2026-10-13
 
 - 🔄 **Gesture vocabulary reshuffled, as requested**: a **straight swipe** now moves to the next question (it used to do nothing), and a **long press** now **turns gesture mode off** (it used to mean "next"). Tap ×N = option N and circle = play / replay are unchanged

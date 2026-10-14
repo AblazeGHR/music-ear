@@ -29,6 +29,7 @@ function blank() {
     items: {},                // itemKey -> {a, c, recent: [0|1]}
     modules: {},              // moduleId -> {a, c}
     confusions: {},           // 'moduleId|correct>answered' -> count
+    answers: {},              // moduleId -> answerId -> {a, c, wrong: {answeredId: count}}
     totals: { a: 0, c: 0 },
   };
 }
@@ -134,7 +135,7 @@ export function moduleStats(moduleId) {
 // Record one answered question.
 // itemResults: [{key, correct}] for each skill exercised (per-slot for
 // sequences); correct: whole-question correctness.
-export function recordAnswer(moduleId, itemResults, correct, confusion = null) {
+export function recordAnswer(moduleId, itemResults, correct, confusion = null, kind = null) {
   for (const { key, correct: ok } of itemResults) {
     const st = state.items[key] || { a: 0, c: 0, recent: [] };
     st.a += 1;
@@ -154,6 +155,20 @@ export function recordAnswer(moduleId, itemResults, correct, confusion = null) {
     state.confusions[ck] = (state.confusions[ck] || 0) + 1;
   }
 
+  // Multiple-choice only: how often each answer was the right one, and what
+  // got picked instead when it was missed. Sequences and dictation grade whole
+  // questions, so there is no single "this answer" to attribute a miss to.
+  if (kind === 'choice' && confusion) {
+    const byAnswer = state.answers[moduleId] || (state.answers[moduleId] = {});
+    const entry = byAnswer[confusion.correctId] || (byAnswer[confusion.correctId] = { a: 0, c: 0, wrong: {} });
+    entry.a += 1;
+    if (correct) {
+      entry.c += 1;
+    } else {
+      entry.wrong[confusion.answeredId] = (entry.wrong[confusion.answeredId] || 0) + 1;
+    }
+  }
+
   state.totals.a += 1;
   if (correct) state.totals.c += 1;
   save();
@@ -168,6 +183,28 @@ export function topConfusions(limit = 8) {
     })
     .sort((a, b) => b.count - a.count)
     .slice(0, limit);
+}
+
+// Per-answer record for a multiple-choice module, worst-missed first: each
+// entry carries how often the answer came up, how often it was right, and the
+// ranked list of what was chosen when it was missed.
+export function answerBreakdown(moduleId) {
+  const byAnswer = state.answers[moduleId] || {};
+  return Object.entries(byAnswer)
+    .map(([id, e]) => {
+      const wrong = Object.entries(e.wrong || {}).sort((a, b) => b[1] - a[1]);
+      return {
+        id,
+        a: e.a,
+        c: e.c,
+        wrongTotal: e.a - e.c,
+        wrong,                       // [[answeredId, count], …] most chosen first
+      };
+    })
+    .sort((x, y) =>
+      (y.wrongTotal / y.a) - (x.wrongTotal / x.a) ||   // miss rate first
+      y.wrongTotal - x.wrongTotal ||
+      y.a - x.a);
 }
 
 // ── Export / import ──────────────────────────────────────────────────────────

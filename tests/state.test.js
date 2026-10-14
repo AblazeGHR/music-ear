@@ -111,3 +111,59 @@ test('export/import round-trips and rejects foreign files', () => {
   assert.throws(() => State.importJSON('{"version": 1}'), /backup/);
   assert.throws(() => State.importJSON('not json'));
 });
+
+test('multiple-choice answers track per-answer misses and what was picked', () => {
+  State.resetAll();
+  const cf = (correctId, answeredId) => ({ correctId, answeredId });
+  // Perfect 5th came up four times: right twice, missed as M3 once and P8 once.
+  State.recordAnswer('intervals', [{ key: 'iv:P5:a', correct: true }], true, cf('P5', 'P5'), 'choice');
+  State.recordAnswer('intervals', [{ key: 'iv:P5:a', correct: false }], false, cf('P5', 'M3'), 'choice');
+  State.recordAnswer('intervals', [{ key: 'iv:P5:a', correct: false }], false, cf('P5', 'P8'), 'choice');
+  State.recordAnswer('intervals', [{ key: 'iv:P5:a', correct: true }], true, cf('P5', 'P5'), 'choice');
+
+  const bd = State.answerBreakdown('intervals');
+  assert.equal(bd.length, 1);
+  assert.equal(bd[0].id, 'P5');
+  assert.equal(bd[0].a, 4);
+  assert.equal(bd[0].c, 2);
+  assert.equal(bd[0].wrongTotal, 2);
+  assert.deepEqual(bd[0].wrong, [['M3', 1], ['P8', 1]]);
+
+  // The new bookkeeping leaves the existing statistics untouched.
+  assert.deepEqual(State.moduleStats('intervals'), { a: 4, c: 2 });
+  assert.deepEqual(State.itemStats('iv:P5:a'), { a: 4, c: 2, recent: [1, 0, 0, 1] });
+});
+
+test('non-choice questions record no per-answer breakdown', () => {
+  State.resetAll();
+  State.recordAnswer('progressions', [{ key: 'pg:major:I', correct: true }], true, null, 'sequence');
+  State.recordAnswer('melodies', [{ key: 'ml:do', correct: false }], false, null, 'melody');
+  assert.deepEqual(State.answerBreakdown('progressions'), []);
+  assert.deepEqual(State.answerBreakdown('melodies'), []);
+  assert.deepEqual(State.state.answers, {});
+});
+
+test('the breakdown is worst-first and survives export/import', () => {
+  State.resetAll();
+  const cf = (a, b) => ({ correctId: a, answeredId: b });
+  for (let i = 0; i < 3; i++) State.recordAnswer('absolute', [{ key: 'ab:4', correct: false }], false, cf(4, 0), 'choice');
+  for (let i = 0; i < 2; i++) State.recordAnswer('absolute', [{ key: 'ab:0', correct: false }], false, cf(0, 4), 'choice');
+  State.recordAnswer('absolute', [{ key: 'ab:0', correct: true }], true, cf(0, 0), 'choice');
+
+  const ids = () => State.answerBreakdown('absolute').map(x => x.id);
+  assert.deepEqual(ids(), ['4', '0'], 'the highest miss rate comes first');
+  State.importJSON(State.exportJSON());
+  assert.deepEqual(ids(), ['4', '0']);
+  assert.deepEqual(State.answerBreakdown('absolute')[0].wrong, [['0', 3]]);
+});
+
+test('the breakdown ranks by miss rate, not raw miss count', () => {
+  State.resetAll();
+  const cf = (a, b) => ({ correctId: a, answeredId: b });
+  // Asked a lot, missed a little: 20%.
+  for (let i = 0; i < 5; i++) State.recordAnswer('chords', [{ key: 'ch:maj', correct: i > 0 }], i > 0, i > 0 ? cf('maj', 'maj') : cf('maj', 'min'), 'choice');
+  // Asked once, missed once: 100% — the weakest answer despite one single miss.
+  State.recordAnswer('chords', [{ key: 'ch:dim', correct: false }], false, cf('dim', 'min'), 'choice');
+
+  assert.deepEqual(State.answerBreakdown('chords').map(x => x.id), ['dim', 'maj']);
+});

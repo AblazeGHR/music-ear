@@ -77,7 +77,9 @@ function genPitch(mod, cfg) {
       return {
         correct,
         itemResults: [{ key: `pi:${this.answerId}`, correct }],
-        confusion: null,
+        // A choice question like any other: what the answer was, what was
+        // picked — feeds the per-answer breakdown and the confusion list.
+        confusion: { correctId: this.answerId, answeredId },
       };
     },
   };

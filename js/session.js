@@ -69,6 +69,10 @@ function runSession(root, cfg) {
     class: 'gesture-help-btn', 'aria-label': 'How gestures map to the buttons', title: 'How gestures map to the buttons',
     onclick: () => showHelp(),
   }, '?');
+  const statsBtn = h('button', {
+    class: 'iconbtn', 'aria-label': 'This exercise in your stats', title: 'This exercise in your stats',
+    onclick: () => go(`#/stats/${cfg.moduleId}`),
+  }, '📊');
   const kbdEl = h('div', { class: 's-kbd' }, KBD_HINT);
   const overlay = h('div', { class: 'gesture-overlay' });
 
@@ -150,7 +154,7 @@ function runSession(root, cfg) {
       h('div', { class: 's-title' },
         h('div', {}, cfg.title),
         h('div', { class: 's-sub' }, cfg.blurb)),
-      scoreEl, gestureBtn, helpBtn),
+      scoreEl, gestureBtn, helpBtn, statsBtn),
     h('main', { class: 's-body' },
       h('div', { class: 's-stage' }, playBtn, promptEl, howToEl),
       answersEl, feedbackEl, actionsEl,
@@ -245,7 +249,7 @@ function runSession(root, cfg) {
     lastResultCorrect = result.correct;
     sessionN++;
     if (result.correct) sessionC++;
-    State.recordAnswer(q.moduleId, result.itemResults, result.correct, result.confusion);
+    State.recordAnswer(q.moduleId, result.itemResults, result.correct, result.confusion, q.kind);
     updateScore();
     track('question_answered', { module: q.moduleId, kind: q.kind, correct: result.correct });
 

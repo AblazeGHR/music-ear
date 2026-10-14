@@ -561,11 +561,18 @@ button:focus-visible, a:focus-visible, select:focus-visible {
 
 .stat-modules { display: flex; flex-direction: column; gap: 0.55rem; }
 .stat-mod {
+  padding: 0;                 /* the summary and the body carry their own */
+  overflow: hidden;
+}
+.stat-mod > summary.sm-sum {
   display: flex;
   align-items: center;
   gap: 0.9rem;
   padding: 0.75rem 1rem;
+  cursor: pointer;
+  list-style: none;
 }
+.stat-mod > summary.sm-sum::-webkit-details-marker { display: none; }
 .sm-main { flex: 1; min-width: 0; }
 .sm-title { font-weight: 700; font-size: 0.95rem; }
 .sm-bar {
@@ -577,6 +584,57 @@ button:focus-visible, a:focus-visible, select:focus-visible {
 }
 .sm-fill { height: 100%; border-radius: 99px; background: var(--mc); transition: width 0.3s; }
 .sm-side { text-align: right; font-weight: 700; font-size: 0.9rem; flex: none; }
+.sm-chev { flex: none; color: var(--text-dim); font-size: 1.15rem; transition: transform 0.2s; }
+.stat-mod[open] .sm-chev { transform: rotate(90deg); }
+.sm-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  padding: 0.8rem 1rem 0.9rem;
+  border-top: 1px solid var(--border);
+}
+.ans-list { display: flex; flex-direction: column; gap: 0.3rem; }
+.ans-row {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+.ans-row > summary {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.45rem 0.7rem;
+  cursor: pointer;
+  list-style: none;
+}
+.ans-row > summary::-webkit-details-marker { display: none; }
+.ans-name { flex: none; width: 110px; font-weight: 600; font-size: 0.9rem; }
+.ans-bar {
+  flex: 1;
+  height: 6px;
+  border-radius: 99px;
+  background: color-mix(in srgb, var(--text) 12%, transparent);
+  overflow: hidden;
+}
+.ans-fill { display: block; height: 100%; border-radius: 99px; background: var(--mc); }
+.ans-num { flex: none; font-size: 0.85rem; font-weight: 600; white-space: nowrap; }
+.wrong-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.15rem 0.7rem 0.55rem;
+}
+.wrong-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.7rem;
+  font-size: 0.88rem;
+  padding-left: 0.9rem;
+}
+@media (max-width: 480px) {
+  .ans-name { width: 88px; }
+  .ans-num { font-size: 0.8rem; }
+}
 
 .confusions { display: flex; flex-direction: column; gap: 0.55rem; }
 .confusion-row {
