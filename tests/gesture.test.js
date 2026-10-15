@@ -10,14 +10,16 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 function recorder(options = {}) {
   const calls = [];
+  const touches = [];      // kept apart: a touch is not a judgement
   const handlers = {
+    onTouch: () => touches.push('touch'),
     onTap: n => calls.push(['tap', n]),
     onCommit: n => calls.push(['commit', n]),
     onHold: () => calls.push(['hold']),
     onSwipe: () => calls.push(['swipe']),
     onCircle: loops => calls.push(['circle', loops]),
   };
-  return { calls, rec: createRecognizer(handlers, { tapWindowMs: 30, holdMs: 40, ...options }) };
+  return { calls, touches, rec: createRecognizer(handlers, { tapWindowMs: 30, holdMs: 40, ...options }) };
 }
 
 // A tap: pointer down and up at the same spot, a few ms apart.
@@ -61,6 +63,40 @@ test('taps spaced further apart than the window commit separately', async () => 
   tap(rec, 100, 100, 100);
   await sleep(50);
   assert.deepEqual(calls, [['tap', 1], ['commit', 1], ['tap', 1], ['commit', 1]]);
+});
+
+test('the tick is emitted on touch-down, before the gesture is judged', async () => {
+  const log = [];
+  const rec = createRecognizer({
+    onTouch: () => log.push('touch'),
+    onTap: () => log.push('tap'),
+    onCommit: n => log.push(`commit:${n}`),
+  }, { tapWindowMs: 30, holdMs: 40 });
+
+  rec.pointerDown(100, 100, 0);
+  assert.deepEqual(log, ['touch'], 'the finger lands and the tick is already out');
+  rec.pointerUp(100, 100, 10);
+  assert.deepEqual(log, ['touch', 'tap'], 'the judgement comes at release…');
+  await sleep(50);
+  assert.deepEqual(log, ['touch', 'tap', 'commit:1'], '…and the answer once the tap window closes');
+});
+
+test('every touch ticks, and only real taps are judged', async () => {
+  for (const [label, drive] of [
+    ['tap', r => tap(r)],
+    ['hold', r => hold(r)],
+    ['circle', r => circle(r)],
+    ['swipe', r => { r.pointerDown(100, 100, 0); r.pointerMove(170, 100, 40); r.pointerUp(240, 100, 80); }],
+    ['curve (ignored)', r => { r.pointerDown(280, 100, 0); for (let i = 1; i <= 16; i++) { const a = Math.PI * (i / 16); r.pointerMove(200 + 80 * Math.cos(a), 100 + 80 * Math.sin(a), i * 12); } r.pointerUp(120, 100, 200); }],
+  ]) {
+    const { touches, calls, rec } = recorder();
+    drive(rec);
+    await sleep(50);
+    assert.equal(touches.length, 1, `${label}: exactly one tick for one touch`);
+    if (label !== 'tap') {
+      assert.ok(!calls.some(c => c[0] === 'tap' || c[0] === 'commit'), `${label} is not judged as a tap`);
+    }
+  }
 });
 
 test('a hold commits nothing and fires onHold', () => {

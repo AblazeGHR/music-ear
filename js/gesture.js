@@ -9,6 +9,11 @@
 //   • circle                → play / replay, and a second full loop (onCircle
 //     reports 2) is the "name the answers" gesture after a miss
 //
+// onTouch fires the moment the surface is touched — before anyone knows which
+// gesture it will become — so the caller can sound an instant tick. The tick is
+// feedback for the touch, not for the judgement: a hold, a swipe or a circle
+// ticks and then does its own thing, counting as no tap at all.
+//
 // The core is a pure state machine taking explicit coordinates and timestamps,
 // so it is unit-tested without a browser; bindPointerSurface() at the bottom is
 // the only DOM-aware part.
@@ -39,13 +44,17 @@ export function createRecognizer(handlers, options = {}) {
     clearTapTimer();
     const n = tapCount;
     tapCount = 0;
-    if (n > 0) handlers.onCommit(n);
+    if (n > 0) handlers.onCommit?.(n);
   }
 
   return {
     pointerDown(x, y, t) {
       downAt = t; downX = x; downY = y; maxMove = 0;
       path = [{ x, y, t }];
+      // Instant, unconditional: the caller sounds a tick here so the feedback
+      // lands with the touch instead of waiting to see what the gesture
+      // becomes. Whether it counts as a tap is decided on release, as always.
+      handlers.onTouch?.();
     },
 
     pointerMove(x, y, t) {
@@ -62,22 +71,22 @@ export function createRecognizer(handlers, options = {}) {
 
       if (maxMove > cfg.moveTolerance && isCircle(path, cfg)) {
         // A second loop is its own gesture ("name the answers" in gesture mode).
-        handlers.onCircle(circleLoops(path, cfg));
+        handlers.onCircle?.(circleLoops(path, cfg));
       } else if (maxMove > cfg.moveTolerance && isSwipe(path, cfg)) {
         // A deliberate line wins over taps still waiting to commit, for the
         // same reason a hold does: they were not an intended answer.
         clearTapTimer();
         tapCount = 0;
-        handlers.onSwipe();
+        handlers.onSwipe?.();
       } else if (maxMove <= cfg.moveTolerance && duration >= cfg.holdMs) {
         // A hold wins over taps still waiting to commit — they were almost
         // certainly part of reaching for the hold, not an intended answer.
         clearTapTimer();
         tapCount = 0;
-        handlers.onHold();
+        handlers.onHold?.();
       } else if (maxMove <= cfg.moveTolerance) {
         tapCount += 1;
-        handlers.onTap(tapCount);
+        handlers.onTap?.(tapCount);
         clearTapTimer();
         tapTimer = setTimeout(commitTaps, cfg.tapWindowMs);
       }

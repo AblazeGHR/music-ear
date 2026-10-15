@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.8.2 — 2026-10-15
+
+- ⚡ **The tick now sounds on touch-down, not on the tap judgement.** It used to wait for the release and the recognizer's verdict, which cost the whole duration of the touch. Now the sound is feedback for the touch itself: it lands with the finger, and whatever the touch turns into afterwards still ticks exactly once — a hold, a swipe, a circle, even a curve that is read as no gesture at all. None of them count as a tap, so nothing about answering changed
+- Handlers are called optionally (`onTouch?.()` style) so a caller that does not care about a gesture need not stub it
+
 ## 0.8.1 — 2026-10-15
 
 - 🎚️ **The gesture tap window is now a free number instead of three presets.** Type any value from 100 to 2000 ms (250 / 350 / 550 remain the quick / normal / relaxed reference points in the description); the value is rounded and clamped on commit, so a stray entry can never leave taps uncommittable or firing instantly. One shared clamp feeds the recognizer, so an imported backup with an odd value is tamed too

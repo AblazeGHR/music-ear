@@ -80,7 +80,10 @@ function runSession(root, cfg) {
   // How long the app waits for another tap before taking the answer; any
   // value the user set in Settings, clamped to something usable here.
   const recognizer = createRecognizer({
-    onTap: () => { if (gestureOn) Audio.playNote(84, 0.045, 1, { lead: UI_LEAD }); },   // count ticks
+    // Sounding the tick on touch — not on the tap judgement — is what makes it
+    // feel instant: it lands with the finger, and a hold, swipe or circle that
+    // follows ticks too yet still counts as no tap at all.
+    onTouch: () => { if (gestureOn) Audio.playNote(84, 0.045, 1, { lead: UI_LEAD }); },
     onCommit: n => { if (gestureOn) submitByCount(n); },
     onSwipe: () => { if (gestureOn) { clearAuto(); nextQuestion(); } },   // straight line → next
     onHold: () => { if (gestureOn) setGesture(false); },                  // hold → leave
