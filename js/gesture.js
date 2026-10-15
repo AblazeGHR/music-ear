@@ -2,11 +2,12 @@
 //
 // Four disjoint gestures (they differ in movement and duration, so they can
 // never be confused with each other):
-//   • tap / N quick taps   → pick the Nth option (committed when the tap window
+//   • tap / N quick taps    → pick the Nth option (committed when the tap window
 //     closes, so "tap, tap" can mean "option 2" rather than two option-1 picks)
 //   • swipe a straight line → next question (skips an ungraded one)
-//   • press and hold       → leave gesture mode
-//   • circle               → play / replay
+//   • press and hold        → leave gesture mode
+//   • circle                → play / replay, and a second full loop (onCircle
+//     reports 2) is the "name the answers" gesture after a miss
 //
 // The core is a pure state machine taking explicit coordinates and timestamps,
 // so it is unit-tested without a browser; bindPointerSurface() at the bottom is
@@ -60,7 +61,8 @@ export function createRecognizer(handlers, options = {}) {
       const duration = t - downAt;
 
       if (maxMove > cfg.moveTolerance && isCircle(path, cfg)) {
-        handlers.onCircle();
+        // A second loop is its own gesture ("name the answers" in gesture mode).
+        handlers.onCircle(circleLoops(path, cfg));
       } else if (maxMove > cfg.moveTolerance && isSwipe(path, cfg)) {
         // A deliberate line wins over taps still waiting to commit, for the
         // same reason a hold does: they were not an intended answer.
@@ -115,7 +117,7 @@ function pathShape(path, cfg) {
 
   const duration = path[path.length - 1].t - path[0].t;
   if (duration <= 0 || duration > cfg.circleMaxMs) {
-    return { duration, radius, displacement, straightness, angle: 0 };
+    return { duration, radius, displacement, pathLength, straightness, angle: 0 };
   }
   let angle = 0;
   let prev = Math.atan2(path[0].y - cy, path[0].x - cx);
@@ -127,7 +129,7 @@ function pathShape(path, cfg) {
     angle += d;
     prev = a;
   }
-  return { duration, radius, displacement, straightness, angle };
+  return { duration, radius, displacement, pathLength, straightness, angle };
 }
 
 // True when the pointer swept far enough around its own centroid to read as a
@@ -138,6 +140,18 @@ export function isCircle(path, cfg = GESTURE_DEFAULTS) {
   return shape.duration > 0
     && shape.radius >= cfg.circleMinRadius && shape.radius <= cfg.circleMaxRadius
     && Math.abs(shape.angle) >= cfg.circleMinAngle;
+}
+
+// How many times around the loop went. Measured as path length over the
+// circumference of the loop it drew — one loop of travel is one circle, and
+// rounding absorbs the wobble of a hand-drawn loop. A single circle that
+// overshoots its start by a third or less still reads as one; a loop and a half
+// or more reads as two. (The accumulated angle cannot be used here: it
+// saturates at one turn per revolution.)
+export function circleLoops(path, cfg = GESTURE_DEFAULTS) {
+  const shape = pathShape(path, cfg);
+  if (shape.radius <= 0 || shape.pathLength <= 0) return 1;
+  return Math.max(1, Math.round(shape.pathLength / (2 * Math.PI * shape.radius)));
 }
 
 // True when the pointer travelled far along a straight line. Measured as net

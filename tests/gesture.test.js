@@ -15,7 +15,7 @@ function recorder(options = {}) {
     onCommit: n => calls.push(['commit', n]),
     onHold: () => calls.push(['hold']),
     onSwipe: () => calls.push(['swipe']),
-    onCircle: () => calls.push(['circle']),
+    onCircle: loops => calls.push(['circle', loops]),
   };
   return { calls, rec: createRecognizer(handlers, { tapWindowMs: 30, holdMs: 40, ...options }) };
 }
@@ -78,10 +78,22 @@ test('a hold discards taps that were still waiting to commit', async () => {
     'no commit — the stray tap was part of reaching for the hold');
 });
 
-test('a circle fires onCircle and never a tap', () => {
+test('a circle fires onCircle(1) and never a tap', () => {
   const { calls, rec } = recorder();
   circle(rec);
-  assert.deepEqual(calls, [['circle']]);
+  assert.deepEqual(calls, [['circle', 1]]);
+});
+
+test('a second loop reports onCircle(2)', () => {
+  const { calls, rec } = recorder();
+  circle(rec, { turns: 2.3 });          // well past two full turns
+  assert.deepEqual(calls, [['circle', 2]]);
+});
+
+test('a single loop that overshoots a little still counts as one', () => {
+  const { calls, rec } = recorder();
+  circle(rec, { turns: 1.3 });          // one loop plus a third, not two
+  assert.deepEqual(calls, [['circle', 1]]);
 });
 
 test('a straight line fires onSwipe and never a tap', () => {
