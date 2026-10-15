@@ -1,11 +1,10 @@
 # Changelog
 
-## 0.8.0 — 2026-10-14
+## 0.8.0 — 2026-10-15
 
-- 🗣️ **Spoken answer names (gesture mode).** After a wrong answer, drawing the circle a second time speaks the two names — "You chose Perfect 5th. The answer was Major 3rd." — so a miss can be *named*, not only re-played. One circle still replays as before
+- 🗣️ **Spoken answer names.** After a wrong answer the feedback row gains a **🔊 Names** button that speaks "You chose X. The answer was Y.", and in gesture mode the same is available by drawing the circle a second time (one circle still replays as before; two circles in any other state are just a replay)
 - Uses the browser's built-in speech engine (Web Speech API): no dependency, no network request, no new build step. Names are spoken in a pronounceable form (chord inversions as "Dominant 7th, 1st inv", accidentals as "C sharp", solfege spelled for the voice, scale degrees following your solfege/number label preference)
-- The loop count is measured as travel over the loop's circumference — one loop (even overshooting its start by a third) reads as one, a loop and a half or more reads as two. If the platform has no speech engine at all the gesture falls back to replaying, so it never feels dead
-- Unreleased on this branch: `feat/spoken-answer-names`
+- The loop count is measured as travel over the loop's circumference — one loop (even overshooting its start by a third) reads as one, a loop and a half or more reads as two. If the platform has no speech engine the button stays hidden and the gesture falls back to replaying, so neither ever feels dead
 
 ## 0.7.0 — 2026-10-14
 

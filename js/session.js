@@ -8,7 +8,7 @@ import * as State from './state.js';
 import { moduleById } from './curriculum.js';
 import { renderOptions } from './options.js';
 import { createRecognizer, bindPointerSurface } from './gesture.js';
-import { speakMiss, cancelSpeech } from './speech.js';
+import { speakMiss, cancelSpeech, speechAvailable, spokenAnswerName } from './speech.js';
 import { createPiano } from './piano.js';
 import { midiName } from './theory.js';
 import { track } from './analytics.js';
@@ -130,7 +130,7 @@ function runSession(root, cfg) {
           ghRow('Tap N times', 'the Nth answer button — a tick plays on every tap so you can count with your eyes closed'),
           ghRow('Swipe a line', 'Next → — or skip the question if you have not answered'),
           ghRow('Draw a circle', '▶ Play / replay — after a wrong answer it plays your pick, then the real one'),
-          ghRow('Circle twice', 'after a wrong answer, speaks your pick and then the real one'),
+          ghRow('Circle twice', 'after a wrong answer, speaks your pick and then the real one — the 🔊 Names button does the same'),
           ghRow('Long press', 'turns gesture mode off')),
         h('p', { class: 'tiny muted' }, 'A wrong answer plays your pick and then the real one, so the comparison needs no buttons. Everything else — back, Options, keyboard — stays locked until the switch is off.'),
         h('div', { class: 'gesture-help-close' },
@@ -328,11 +328,23 @@ function runSession(root, cfg) {
       const yourOpt = q.options.find(o => o.id === id);
       extra.push(h('div', { class: 'fb-detail' },
         `It was ${correctOpt.label} — you chose ${yourOpt.label}.`));
+      const compareBtns = [];
       if (q.playOption) {
-        extra.push(h('div', { class: 'fb-compare' },
+        compareBtns.push(
           h('button', { class: 'btn small', onclick: () => q.playOption(id) }, '▶ Your pick'),
-          h('button', { class: 'btn small', onclick: () => q.playOption(q.answerId) }, '▶ Answer')));
+          h('button', { class: 'btn small', onclick: () => q.playOption(q.answerId) }, '▶ Answer'));
       }
+      // The button equivalent of the two-circle gesture: speak the names.
+      // Hidden when the platform has no speech engine or the names are unknown.
+      if (speechAvailable()
+        && spokenAnswerName(cfg.moduleId, id) && spokenAnswerName(cfg.moduleId, q.answerId)) {
+        compareBtns.push(h('button', {
+          class: 'btn small',
+          title: 'Speak the answer names',
+          onclick: () => { Audio.stopAll(); speakMiss(cfg.moduleId, id, q.answerId); },
+        }, '🔊 Names'));
+      }
+      if (compareBtns.length) extra.push(h('div', { class: 'fb-compare' }, ...compareBtns));
     } else {
       extra.push(h('div', { class: 'fb-detail' }, correctOpt.label));
     }
