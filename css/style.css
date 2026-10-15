@@ -667,6 +667,17 @@ button:focus-visible, a:focus-visible, select:focus-visible {
   font-size: 0.9rem;
 }
 .slider { width: 160px; accent-color: var(--accent); }
+.num {
+  width: 92px;
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 0.45rem 0.6rem;
+  font-family: var(--font);
+  font-size: 0.9rem;
+  text-align: right;
+}
 .toggle {
   width: 48px; height: 28px;
   flex: none;

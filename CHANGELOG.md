@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.8.1 — 2026-10-15
+
+- 🎚️ **The gesture tap window is now a free number instead of three presets.** Type any value from 100 to 2000 ms (250 / 350 / 550 remain the quick / normal / relaxed reference points in the description); the value is rounded and clamped on commit, so a stray entry can never leave taps uncommittable or firing instantly. One shared clamp feeds the recognizer, so an imported backup with an odd value is tamed too
+
 ## 0.8.0 — 2026-10-15
 
 - 🗣️ **Spoken answer names.** After a wrong answer the feedback row gains a **🔊 Names** button that speaks "You chose X. The answer was Y.", and in gesture mode the same is available by drawing the circle a second time (one circle still replays as before; two circles in any other state are just a replay)

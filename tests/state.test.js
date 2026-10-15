@@ -112,6 +112,20 @@ test('export/import round-trips and rejects foreign files', () => {
   assert.throws(() => State.importJSON('not json'));
 });
 
+test('the tap window is a free value, clamped to something usable', () => {
+  // Anything inside the range passes through, rounded to a whole millisecond.
+  assert.equal(State.clampTapWindow(275), 275);
+  assert.equal(State.clampTapWindow(412.6), 413);
+  assert.equal(State.clampTapWindow('600'), 600);
+  // Outside it, the bounds win — the recognizer must never get a value that
+  // would leave taps uncommittable or firing instantly.
+  assert.equal(State.clampTapWindow(10), State.TAP_WINDOW_MIN);
+  assert.equal(State.clampTapWindow(99999), State.TAP_WINDOW_MAX);
+  // Garbage falls back to the default rather than NaN.
+  assert.equal(State.clampTapWindow('abc'), 350);
+  assert.equal(State.clampTapWindow(undefined), 350);
+});
+
 test('multiple-choice answers track per-answer misses and what was picked', () => {
   State.resetAll();
   const cf = (correctId, answeredId) => ({ correctId, answeredId });

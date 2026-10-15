@@ -70,6 +70,17 @@ export function resetAll() {
 
 // ── Exercise configuration ───────────────────────────────────────────────────
 
+// The gesture tap window is a free value, not a menu of presets: any duration
+// in this range is accepted, and one clamp is shared by the settings control
+// and the recognizer that consumes it.
+export const TAP_WINDOW_MIN = 100;
+export const TAP_WINDOW_MAX = 2000;
+export function clampTapWindow(ms) {
+  const n = Math.round(Number(ms));
+  if (!Number.isFinite(n)) return DEFAULT_SETTINGS.tapWindowMs;
+  return Math.min(TAP_WINDOW_MAX, Math.max(TAP_WINDOW_MIN, n));
+}
+
 // The live question configuration for a module: registry defaults with the
 // user's stored overrides on top. Chip pools (question items, directions,
 // degrees, numerals…) are returned in the registry's canonical order — never

@@ -215,6 +215,19 @@ export function renderSettings(root) {
     return sel;
   };
 
+  // A free numeric setting: any value in range, clamped on commit so a stray
+  // entry can never leave the app with an unusable number.
+  const numberInput = (value, { min, max, step = 10, onInput }) =>
+    h('input', {
+      class: 'num', type: 'number', value: String(value),
+      min: String(min), max: String(max), step: String(step),
+      onchange: e => {
+        const clamped = Math.min(max, Math.max(min, Math.round(Number(e.target.value) || value)));
+        e.target.value = String(clamped);
+        onInput(clamped);
+      },
+    });
+
   const toggle = (value, onChange) => {
     const btn = h('button', {
       class: 'toggle' + (value ? ' on' : ''),
@@ -260,12 +273,12 @@ export function renderSettings(root) {
       })),
     row('Auto-advance', 'Move to the next question automatically after a correct answer.',
       toggle(s.autoAdvance, v => { s.autoAdvance = v; State.save(); })),
-    row('Gesture tap window', 'How long the app waits for another tap before taking your answer in gesture mode — shorter means quicker feedback. Applies from the next exercise you open.',
-      select(String(s.tapWindowMs), [
-        ['250', 'Quick (250 ms)'],
-        ['350', 'Normal (350 ms)'],
-        ['550', 'Relaxed (550 ms)'],
-      ], v => { s.tapWindowMs = Number(v); State.save(); })),
+    row('Gesture tap window', 'How long the app waits for another tap before taking your answer in gesture mode, in milliseconds — shorter means quicker feedback. 250 is quick, 350 normal, 550 relaxed. Applies from the next exercise you open.',
+      numberInput(s.tapWindowMs, {
+        min: State.TAP_WINDOW_MIN,
+        max: State.TAP_WINDOW_MAX,
+        onInput: v => { s.tapWindowMs = State.clampTapWindow(v); State.save(); },
+      })),
     row('Chord playback', 'Arpeggiating after the block chord helps you hear individual notes.',
       select(s.chordStyle, [
         ['block', 'Block chord only'],

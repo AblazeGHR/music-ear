@@ -77,9 +77,8 @@ function runSession(root, cfg) {
   const kbdEl = h('div', { class: 's-kbd' }, KBD_HINT);
   const overlay = h('div', { class: 'gesture-overlay' });
 
-  // How long the app waits for another tap before taking the answer; tuned in
-  // Settings (a session picks up the stored value when it starts).
-  const tapWindowMs = Number(State.state.settings.tapWindowMs);
+  // How long the app waits for another tap before taking the answer; any
+  // value the user set in Settings, clamped to something usable here.
   const recognizer = createRecognizer({
     onTap: () => { if (gestureOn) Audio.playNote(84, 0.045, 1, { lead: UI_LEAD }); },   // count ticks
     onCommit: n => { if (gestureOn) submitByCount(n); },
@@ -96,7 +95,7 @@ function runSession(root, cfg) {
       }
       playQ();
     },
-  }, tapWindowMs > 0 ? { tapWindowMs } : {});
+  }, { tapWindowMs: State.clampTapWindow(State.state.settings.tapWindowMs) });
   const unbindGestures = bindPointerSurface(overlay, recognizer);
 
   function setGesture(on) {
