@@ -5,7 +5,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  midiToFreq, midiName, pitchClassName,
+  midiToFreq, midiName, nameToMidi, pitchClassName,
   INTERVALS, CHORDS, SCALES, DEGREES, NUMERALS,
   randInt, choice, weightedChoice,
 } from '../js/theory.js';
@@ -243,6 +243,26 @@ test('the exercise registry is internally consistent', () => {
 
   assert.ok(moduleById('absolute'), 'absolute module registered');
   assert.equal(moduleById('nope'), undefined);
+});
+
+test('scientific pitch names round-trip with MIDI numbers', () => {
+  // Every name the app can print must parse back to the same number, over the
+  // whole piano range that the register control spans.
+  for (let m = 21; m <= 108; m++) {
+    assert.equal(nameToMidi(midiName(m)), m, `round trip at ${m} (${midiName(m)})`);
+  }
+  // Both accidental spellings, and the octave convention the app prints (C4 = 60).
+  assert.equal(nameToMidi('C4'), 60);
+  assert.equal(nameToMidi('c3'), 48);
+  assert.equal(nameToMidi('C♯4'), 61);
+  assert.equal(nameToMidi('D♭4'), 61);
+  assert.equal(nameToMidi('F#2'), 42);
+  assert.equal(nameToMidi(' Bb3 '), 58);
+  // Anything else is not a note.
+  assert.equal(nameToMidi('C'), null);
+  assert.equal(nameToMidi('H3'), null);
+  assert.equal(nameToMidi('C99'), null);
+  assert.equal(nameToMidi(''), null);
 });
 
 test('melody and progression lengths are small positive integers', () => {

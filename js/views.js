@@ -123,6 +123,38 @@ export function renderStats(root, focusModuleId = null) {
         : h('div', { class: 'wrong-list tiny muted' }, 'No misses recorded for this answer.'));
   };
 
+  // Two-step destructive action — no native confirm() in this app: the first
+  // tap arms the button for a few seconds and says what would go, the second
+  // one actually clears it. Disabled outright when there is nothing to clear.
+  const clearButton = (mod, ms) => {
+    if (!ms.a) {
+      return h('button', {
+        class: 'btn small danger', disabled: '', title: 'No data recorded for this exercise yet',
+      }, '🗑 Clear');
+    }
+    const btn = h('button', { class: 'btn small danger' });
+    let timer = null;
+    const disarm = () => {
+      btn.classList.remove('armed');
+      btn.textContent = '🗑 Clear';
+    };
+    btn.textContent = '🗑 Clear';
+    btn.addEventListener('click', () => {
+      if (btn.classList.contains('armed')) {
+        clearTimeout(timer);
+        State.clearModule(mod.id);
+        Audio.stopAll();
+        root.innerHTML = '';
+        renderStats(root, mod.id);
+        return;
+      }
+      btn.classList.add('armed');
+      btn.textContent = `Clear ${ms.a} answers? Tap again`;
+      timer = setTimeout(disarm, 4000);
+    });
+    return btn;
+  };
+
   let focusRef = null;
 
   const page = h('div', { class: 'page' },
@@ -152,10 +184,12 @@ export function renderStats(root, focusModuleId = null) {
               h('div', { class: 'tiny muted' }, ms.a ? `${ms.a} answers` : '')),
             h('span', { class: 'sm-chev' }, '›')),
           h('div', { class: 'sm-body' },
-            h('button', {
-              class: 'btn small ghost',
-              onclick: () => go(`#/practice/${mod.id}`),
-            }, `▶ Practice ${mod.title}`),
+            h('div', { class: 'sm-actions' },
+              h('button', {
+                class: 'btn small ghost',
+                onclick: () => go(`#/practice/${mod.id}`),
+              }, `▶ Practice ${mod.title}`),
+              clearButton(mod, ms)),
             breakdown.length
               ? h('div', { class: 'ans-list' },
                   h('div', { class: 'tiny muted ans-head' },

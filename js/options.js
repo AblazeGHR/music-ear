@@ -8,6 +8,7 @@
 
 import { h } from './ui.js';
 import * as State from './state.js';
+import { midiName, nameToMidi } from './theory.js';
 
 // Builds the collapsed <details> panel for one exercise. `onChange` fires after
 // every edit so the session can redraw its next question.
@@ -75,20 +76,37 @@ function select(mod, opt, set) {
       h('option', { value: String(v), ...(v === value ? { selected: '' } : {}) }, label)));
 }
 
+// Two numbers. `format: 'pitch'` shows them as note names (C3 – C5) rather
+// than raw MIDI numbers — the stored value stays MIDI either way.
 function range(mod, opt, set) {
   const clamp = n => Math.max(opt.min, Math.min(opt.max, n));
+  const isPitch = opt.format === 'pitch';
+  const show = n => (isPitch ? midiName(n) : String(n));
+  const parse = text => {
+    const v = isPitch ? nameToMidi(text) : Number(text);
+    return Number.isFinite(v) ? Math.round(v) : null;
+  };
   const inputs = [];
   const input = which => h('input', {
-    type: 'number', class: 'num', min: String(opt.min), max: String(opt.max), step: String(opt.step),
-    value: String(current(mod, opt)[which]),
+    type: isPitch ? 'text' : 'number',
+    class: 'num' + (isPitch ? ' note' : ''),
+    ...(isPitch ? { inputmode: 'text', placeholder: midiName(opt.min) } : {
+      min: String(opt.min), max: String(opt.max), step: String(opt.step),
+    }),
+    value: show(current(mod, opt)[which]),
     onchange: e => {
+      const parsed = parse(e.target.value);
+      if (parsed === null) {                 // not a note / not a number: undo
+        e.target.value = show(current(mod, opt)[which]);
+        return;
+      }
       const next = [...current(mod, opt)];
-      next[which] = clamp(Number(e.target.value) || opt.min);
+      next[which] = clamp(parsed);
       // Keep the pair ordered: a low above the high (or vice versa) is a typo.
       if (next[0] > next[1]) next.sort((a, b) => a - b);
       set(next);
       // Reflect any correction straight back into both boxes.
-      inputs.forEach((el, i) => { el.value = String(next[i]); });
+      inputs.forEach((el, i) => { el.value = show(next[i]); });
     },
   });
   inputs.push(input(0), input(1));

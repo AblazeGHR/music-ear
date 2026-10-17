@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.8.3 — 2026-10-17
+
+- 🗑️ **Clear one exercise's history from its stats card.** Next to ▶ Practice there is now a Clear button: the first tap arms it ("Clear 12 answers? Tap again"), the second one wipes only that exercise — its per-item records, module totals, confusion pairs and per-answer breakdown — while every other exercise and the global totals are recomputed from what is left. Disabled when the exercise has no data; the armed state disarms itself after four seconds
+- 🎼 **The absolute-pitch register reads in note names, not MIDI numbers** — "C3 – C5" instead of "48 – 72", with the label simply "Register". Typing accepts scientific pitch notation (C4, F♯2, D♭4, case-insensitive); anything that is not a note reverts, and the stored value stays MIDI so no data or engine logic changed
+
 ## 0.8.2 — 2026-10-15
 
 - ⚡ **The tick now sounds on touch-down, not on the tap judgement.** It used to wait for the release and the recognizer's verdict, which cost the whole duration of the touch. Now the sound is feedback for the touch itself: it lands with the finger, and whatever the touch turns into afterwards still ticks exactly once — a hold, a swipe, a circle, even a curve that is read as no gesture at all. None of them count as a tap, so nothing about answering changed

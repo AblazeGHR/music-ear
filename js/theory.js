@@ -6,6 +6,20 @@ const NOTE_NAMES = ['C', 'C♯', 'D', 'E♭', 'E', 'F', 'F♯', 'G', 'A♭', 'A'
 export const midiName = m => `${NOTE_NAMES[m % 12]}${Math.floor(m / 12) - 1}`;
 export const pitchClassName = pc => NOTE_NAMES[((pc % 12) + 12) % 12];
 
+// Scientific pitch notation back to a MIDI number — the inverse of midiName(),
+// accepting either accidental spelling: nameToMidi('C4') === 60,
+// nameToMidi('D♭4') === nameToMidi('C♯4') === 61. Returns null for anything
+// that is not a single note with an octave.
+const NAME_TO_PC = { c: 0, d: 2, e: 4, f: 5, g: 7, a: 9, b: 11 };
+export function nameToMidi(text) {
+  const m = String(text).trim().match(/^([a-g])\s*(#{1,2}|♯{1,2}|b{1,2}|♭{1,2})?\s*(-?\d)$/i);
+  if (!m) return null;
+  const pc = NAME_TO_PC[m[1].toLowerCase()];
+  const acc = m[2] ? (/#|♯/.test(m[2]) ? 1 : -1) * m[2].length : 0;
+  const midi = (Number(m[3]) + 1) * 12 + pc + acc;
+  return midi >= 0 && midi <= 127 ? midi : null;
+}
+
 // ── Intervals ────────────────────────────────────────────────────────────────
 // Reference songs are mnemonics: a recognizable melody that opens with the interval.
 export const INTERVALS = {

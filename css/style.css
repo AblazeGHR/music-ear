@@ -593,6 +593,16 @@ button:focus-visible, a:focus-visible, select:focus-visible {
   padding: 0.8rem 1rem 0.9rem;
   border-top: 1px solid var(--border);
 }
+.sm-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
+.btn.danger { color: var(--bad, #f87171); border-color: color-mix(in srgb, var(--bad, #f87171) 45%, transparent); }
+.btn.danger:hover:not(:disabled) { background: color-mix(in srgb, var(--bad, #f87171) 12%, transparent); }
+.btn.danger.armed {
+  background: color-mix(in srgb, var(--bad, #f87171) 18%, transparent);
+  border-color: var(--bad, #f87171);
+  color: var(--bad, #f87171);
+  font-weight: 700;
+}
+.btn.danger:disabled { opacity: 0.38; cursor: default; }
 .ans-list { display: flex; flex-direction: column; gap: 0.3rem; }
 .ans-row {
   border: 1px solid var(--border);
@@ -678,6 +688,7 @@ button:focus-visible, a:focus-visible, select:focus-visible {
   font-size: 0.9rem;
   text-align: right;
 }
+.num.note { width: 76px; text-align: center; }
 .toggle {
   width: 48px; height: 28px;
   flex: none;

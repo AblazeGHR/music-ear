@@ -34,6 +34,7 @@ export const MODULES = [
     icon: '⇅',
     color: 'sky',
     kind: 'choice',
+    itemPrefix: 'pi',   // item-stat keys: "pi:…"
     prompt: 'Is the second note higher or lower?',
     howTo: 'You\'ll hear two notes. Say whether the second one is higher or lower than the first.',
     blurb: 'Higher or lower? The very first skill — and the foundation of everything else.',
@@ -50,6 +51,7 @@ export const MODULES = [
     icon: '♯',
     color: 'lime',
     kind: 'choice',
+    itemPrefix: 'ap',   // item-stat keys: "ap:…"
     prompt: 'What note is this?',
     howTo: 'One note plays on its own — no reference, no key, no chord. Name it from the twelve note names.',
     blurb: 'Hear a single note in isolation and name it. The purest form of absolute pitch.',
@@ -57,7 +59,7 @@ export const MODULES = [
     defaults: { items: pitches(), range: [48, 72] },
     options: [
       { key: 'items', label: 'Note names', type: 'chips', choices: PITCH_CHOICES },
-      { key: 'range', label: 'Register (MIDI)', type: 'range', ...MIDI_RANGE },
+      { key: 'range', label: 'Register', type: 'range', format: 'pitch', ...MIDI_RANGE },
     ],
   },
   {
@@ -66,6 +68,7 @@ export const MODULES = [
     icon: '⌒',
     color: 'violet',
     kind: 'choice',
+    itemPrefix: 'iv',   // item-stat keys: "iv:…"
     prompt: 'What interval is this?',
     howTo: 'Two notes, one distance. Name the interval between them, up, down or together. Replays may switch direction — the interval is the answer.',
     blurb: 'The distance between two notes. Learn all twelve, up, down, and together.',
@@ -85,6 +88,7 @@ export const MODULES = [
     icon: '♬',
     color: 'amber',
     kind: 'choice',
+    itemPrefix: 'ch',   // item-stat keys: "ch:…"
     prompt: 'What chord is this?',
     howTo: 'Three to five notes at once. Name the colour of the chord.',
     blurb: 'From major vs minor to ninths and inversions — name the colour of a chord.',
@@ -100,6 +104,7 @@ export const MODULES = [
     icon: '𝄚',
     color: 'emerald',
     kind: 'choice',
+    itemPrefix: 'sc',   // item-stat keys: "sc:…"
     prompt: 'What scale is this?',
     howTo: 'A ladder of notes from the root to the octave. Name the scale.',
     blurb: 'Major, minor, pentatonic, the church modes, and beyond.',
@@ -115,6 +120,7 @@ export const MODULES = [
     icon: '◉',
     color: 'rose',
     kind: 'choice',
+    itemPrefix: 'dg',   // item-stat keys: "dg:…"
     prompt: 'Which scale degree is this?',
     howTo: 'First a short chord cadence establishes the key. Then one note plays — name where it sits in that key.',
     blurb: 'Hear a key, then name where a note sits inside it. The core of functional hearing.',
@@ -135,6 +141,7 @@ export const MODULES = [
     icon: '⛓',
     color: 'cyan',
     kind: 'sequence',
+    itemPrefix: 'pg',   // item-stat keys: "pg:…"
     prompt: 'Name the chords you hear',
     howTo: 'A cadence establishes the key, then a progression plays. Tap one Roman numeral per chord, in order.',
     blurb: 'Hear a key, then identify each chord of a progression by its Roman numeral.',
@@ -159,6 +166,7 @@ export const MODULES = [
     icon: '♪',
     color: 'fuchsia',
     kind: 'melody',
+    itemPrefix: 'ml',   // item-stat keys: "ml:…"
     prompt: 'Play back the melody',
     howTo: 'A cadence sets the key, then a short melody plays. Play it back on the keyboard, in order.',
     blurb: 'Hear a short melody, then play it back on the keyboard. Dictation, made friendly.',

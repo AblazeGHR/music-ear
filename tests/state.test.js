@@ -112,6 +112,36 @@ test('export/import round-trips and rejects foreign files', () => {
   assert.throws(() => State.importJSON('not json'));
 });
 
+test('clearing one exercise erases only that exercise', () => {
+  State.resetAll();
+  const cf = (a, b) => ({ correctId: a, answeredId: b });
+  State.recordAnswer('intervals', [{ key: 'iv:P5:a', correct: false }], false, cf('P5', 'M3'), 'choice');
+  State.recordAnswer('intervals', [{ key: 'iv:P5:a', correct: true }], true, cf('P5', 'P5'), 'choice');
+  State.recordAnswer('chords', [{ key: 'ch:maj', correct: true }], true, cf('maj', 'maj'), 'choice');
+  assert.equal(State.state.totals.a, 3);
+
+  State.clearModule('intervals');
+
+  assert.deepEqual(State.moduleStats('intervals'), { a: 0, c: 0 });
+  assert.equal(State.state.items['iv:P5:a'], undefined);
+  assert.equal(State.state.answers.intervals, undefined);
+  assert.equal(Object.keys(State.state.confusions).filter(k => k.startsWith('intervals|')).length, 0);
+
+  // The other exercise is untouched…
+  assert.deepEqual(State.moduleStats('chords'), { a: 1, c: 1 });
+  assert.ok(State.state.items['ch:maj']);
+  assert.deepEqual(State.state.answers.chords.maj, { a: 1, c: 1, wrong: {} });
+  // …and the global totals follow what is left.
+  assert.deepEqual(State.state.totals, { a: 1, c: 1 });
+});
+
+test('clearing an unknown exercise is a no-op', () => {
+  State.resetAll();
+  State.recordAnswer('chords', [{ key: 'ch:maj', correct: true }], true, null, 'choice');
+  assert.doesNotThrow(() => State.clearModule('nope'));
+  assert.deepEqual(State.state.totals, { a: 1, c: 1 });
+});
+
 test('the tap window is a free value, clamped to something usable', () => {
   // Anything inside the range passes through, rounded to a whole millisecond.
   assert.equal(State.clampTapWindow(275), 275);

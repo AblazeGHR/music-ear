@@ -68,6 +68,26 @@ export function resetAll() {
   save();
 }
 
+// Erase one exercise's history: its per-item records, module totals, confusion
+// pairs and per-answer breakdown. The global totals are recomputed from the
+// remaining modules so the cards on the stats page stay consistent.
+export function clearModule(moduleId) {
+  const mod = moduleById(moduleId);
+  if (!mod) return;
+  const prefix = `${mod.itemPrefix}:`;
+  for (const key of Object.keys(state.items)) {
+    if (key.startsWith(prefix)) delete state.items[key];
+  }
+  delete state.modules[moduleId];
+  for (const key of Object.keys(state.confusions)) {
+    if (key.startsWith(`${moduleId}|`)) delete state.confusions[key];
+  }
+  delete state.answers[moduleId];
+  state.totals.a = Object.values(state.modules).reduce((n, m) => n + m.a, 0);
+  state.totals.c = Object.values(state.modules).reduce((n, m) => n + m.c, 0);
+  save();
+}
+
 // ── Exercise configuration ───────────────────────────────────────────────────
 
 // The gesture tap window is a free value, not a menu of presets: any duration
