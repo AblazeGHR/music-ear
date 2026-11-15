@@ -77,6 +77,21 @@ npm run deploy    # 需要环境变量 CLOUDFLARE_API_TOKEN
 
 纯静态无构建，也可以发布到任意其他静态托管（GitHub Pages / Cloudflare Pages / Netlify）。若部署到子路径（如 `https://<user>.github.io/music-ear/`），需核对 `manifest.webmanifest` 的 `start_url`/`scope` 与 `sw.js` 缓存路径是否兼容子路径（见 ROADMAP 风险项）。
 
+## 安卓应用（实验）
+
+同一份静态站点可以打包成离线安卓应用。`android/` 是一个**零第三方依赖**的原生壳（WebView + 内置资源 + 系统 TTS 桥），构建时把运行时文件复制进 APK，装上即可用、不联网也能练。
+
+```bash
+npm run android                     # → android/app/build/outputs/apk/debug/app-debug.apk
+npm run android -- assembleRelease  # 未签名 release 包（签名需自备 keystore）
+npm run android:icons               # 改过 assets/icon.svg 后重新生成启动图标（需 Pillow）
+```
+
+- 需要 JDK 17+ 与 Android SDK（`ANDROID_HOME`）；Gradle 由 wrapper 首次运行时下载。最低 Android 8.0（API 26），WebView 建议 Chrome 80+。
+- 版本号与 versionCode 从 `js/config.js` 的 `APP_VERSION` 读取，不单独维护。
+- 安卓 WebView 没有可用的 Web Speech 语音，壳里通过 `AndroidTTS` 桥接系统 TTS，`js/speech.js` 检测到桥接时优先使用；壳内也不再注册 Service Worker（文件已在 APK 里）。
+- 页面里指向 GitHub / changelog / mailto 的链接会交给系统浏览器或邮件应用打开。
+
 ## 数据与隐私
 
 - 进度与设置存于 localStorage（key `music-ear-v1`），可 JSON 导出/导入；无任何网络请求（不含分析与遥测）

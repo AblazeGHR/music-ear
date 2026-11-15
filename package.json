@@ -6,6 +6,8 @@
   "license": "MIT",
   "scripts": {
     "test": "node --test",
-    "deploy": "node scripts/deploy.mjs"
+    "deploy": "node scripts/deploy.mjs",
+    "android": "node scripts/build-android.mjs",
+    "android:icons": "E:/software/miniforge/python.exe scripts/make-icons.py"
   }
 }

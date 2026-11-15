@@ -36,14 +36,28 @@ export function spokenAnswerName(moduleId, id) {
   }
 }
 
+// Android's WebView reports `speechSynthesis` but ships no voices, so the app
+// shell injects a native bridge instead (see android/.../TtsBridge.java). It
+// wins whenever it exists.
+function nativeTts() {
+  const bridge = typeof window !== 'undefined' ? window.AndroidTTS : null;
+  return bridge && typeof bridge.speak === 'function' ? bridge : null;
+}
+
 export function speechAvailable() {
-  return typeof window !== 'undefined' && 'speechSynthesis' in window;
+  return !!nativeTts() || (typeof window !== 'undefined' && 'speechSynthesis' in window);
 }
 
 // Speak one line, replacing anything already being spoken. Returns false when
 // the platform has no speech engine at all, so callers can fall back to audio.
 export function speak(text) {
-  if (!speechAvailable() || !text) return false;
+  if (!text) return false;
+  const bridge = nativeTts();
+  if (bridge) {
+    bridge.speak(text, State.state.settings.volume ?? 1);
+    return true;
+  }
+  if (!speechAvailable()) return false;
   const synth = window.speechSynthesis;
   synth.cancel();
   const u = new SpeechSynthesisUtterance(text);
@@ -67,5 +81,7 @@ export function speakMiss(moduleId, pickedId, answerId) {
 }
 
 export function cancelSpeech() {
-  if (speechAvailable()) window.speechSynthesis.cancel();
+  const bridge = nativeTts();
+  if (bridge && typeof bridge.cancel === 'function') bridge.cancel();
+  if (typeof window !== 'undefined' && 'speechSynthesis' in window) window.speechSynthesis.cancel();
 }

@@ -1,0 +1,5 @@
+// Root build file — the app has no third-party dependencies, only the Android
+// Gradle plugin. Version numbers for the APK are read from js/config.js.
+plugins {
+    id 'com.android.application' version '8.13.0' apply false
+}

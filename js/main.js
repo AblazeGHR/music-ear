@@ -43,7 +43,10 @@ mountFeedback();
 window.addEventListener('hashchange', route);
 route();
 
-// Offline support (no-op during local file:// development).
-if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+// Offline support (no-op during local file:// development). Inside the Android
+// shell the files already ship with the APK, so a service worker would only
+// risk serving a previous version's assets after an update.
+const inAppShell = typeof window.AndroidTTS !== 'undefined';
+if (!inAppShell && 'serviceWorker' in navigator && location.protocol.startsWith('http')) {
   navigator.serviceWorker.register('./sw.js').catch(() => {});
 }

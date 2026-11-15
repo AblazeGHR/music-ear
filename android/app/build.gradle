@@ -1,0 +1,52 @@
+// App module — a thin native shell around the static site in
+// app/src/main/assets/www (staged by scripts/build-android.mjs).
+plugins {
+    id 'com.android.application'
+}
+
+// Single source of truth for the version: js/config.js.
+def appVersion = '0.0.0'
+def versionFile = rootProject.file('../js/config.js')
+if (versionFile.exists()) {
+    def m = versionFile.text =~ /APP_VERSION\s*=\s*'([^']+)'/
+    if (m.find()) appVersion = m.group(1)
+}
+def parts = appVersion.tokenize('.').collect { it.isInteger() ? it.toInteger() : 0 }
+while (parts.size() < 3) parts << 0
+def versionCodeValue = parts[0] * 10000 + parts[1] * 100 + parts[2]
+
+android {
+    namespace 'app.earpath'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'app.earpath'
+        minSdk 26
+        targetSdk 35
+        versionCode versionCodeValue
+        versionName appVersion
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            // Signing is deliberately left out: a release keystore is a
+            // personal secret and must not live in the repository. Add a
+            // signingConfig here (or use `apksigner`) when publishing.
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    lint {
+        // The web assets are staged into assets/www and are not Java sources;
+        // the default checks have nothing to say about them.
+        checkReleaseBuilds false
+    }
+}
+
+// No `dependencies` block on purpose — android.webkit, android.speech.tts and
+// the framework widgets cover everything this shell needs.

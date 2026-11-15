@@ -7,16 +7,10 @@
 //
 // Usage:  npm run deploy        (needs CLOUDFLARE_API_TOKEN in the environment)
 
-import { cpSync, mkdirSync, rmSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
+import { stageWeb } from './stage-web.mjs';
 
-const FILES = ['index.html', 'manifest.webmanifest', 'sw.js'];
-const DIRS = ['css', 'js', 'assets'];
-
-rmSync('dist', { recursive: true, force: true });
-mkdirSync('dist', { recursive: true });
-for (const f of FILES) cpSync(f, `dist/${f}`);
-for (const d of DIRS) cpSync(d, `dist/${d}`, { recursive: true });
+stageWeb('dist');
 
 console.log('staged dist/ — deploying to Cloudflare…');
 const r = spawnSync('npx', ['--yes', 'wrangler@latest', 'deploy'], {

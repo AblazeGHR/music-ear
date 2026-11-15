@@ -11,3 +11,13 @@ dist/
 # Editor / OS noise
 .DS_Store
 Thumbs.db
+
+# Android build output, machine-local SDK path, and the web assets staged into
+# the APK (generated from the repository root by scripts/build-android.mjs)
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/app/src/main/assets/www/
+*.jks
+*.keystore
