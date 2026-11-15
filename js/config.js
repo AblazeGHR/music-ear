@@ -9,5 +9,7 @@ export const APP_VERSION = '0.8.3';
 export const POSTHOG_KEY = '';
 export const POSTHOG_HOST = 'https://us.i.posthog.com';
 
-export const REPO_URL = 'https://github.com/abeage1/earpath-app';
+// This fork's own repository (the upstream is abeage1/earpath-app; see README
+// for attribution). All footer / changelog / feedback links point here.
+export const REPO_URL = 'https://github.com/AblazeGHR/music-ear';
 export const FEEDBACK_EMAIL = 'ericsilberstein@gmail.com';
