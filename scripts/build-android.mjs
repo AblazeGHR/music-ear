@@ -13,11 +13,13 @@ import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { stageWeb } from './stage-web.mjs';
+import { ensureAsrModel } from './fetch-asr-model.mjs';
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const task = process.argv[2] ?? 'assembleDebug';
 
 process.chdir(root);
+await ensureAsrModel();
 stageWeb(join('android', 'app', 'src', 'main', 'assets', 'www'));
 
 const gradlew = process.platform === 'win32' ? 'gradlew.bat' : './gradlew';

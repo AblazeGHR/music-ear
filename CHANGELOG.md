@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.9.0 — 2026-11-19
+
+- 🎙 **Voice answering for the choice exercises.** Turn on the mic switch and keep practising hands-free: say an option's name ("perfect fifth", "major first inversion", "C sharp", "re") or its number ("five", "option three") and it answers. Voice commands: **replay**, **next**, **names** (speak the miss), **stop listening**
+- **Continuous by design** — the microphone stays open until you switch it off or nothing has been recognised for the idle timeout. The timeout defaults to 10 minutes and is adjustable (1–60) in Settings; a recognised answer or command resets it. Listening pauses itself while the question, the A/B comparison or the spoken answer is audible
+- **Android: fully on-device recognition.** Vosk small en-US ships inside the APK and runs locally — no network, no Google speech service, audio never leaves the phone. Each question narrows the recogniser with a grammar built from that question's option names plus the four commands, which is what makes a 40 MB model reliable on short answers. APK grows to ~51 MB (arm64)
+- **Web:** uses the browser's own speech recognition where available (Chrome/Edge; iOS Safari). Where the service is blocked or missing, the switch hides itself or explains instead of failing silently
+- 📴 **The app is now genuinely offline.** Outfit is bundled as woff2 (Google Fonts removed), and the Android WebView refuses every non-local request with a 403 — a stray URL cannot leak or stall a session
+- 🖱️ **No more viewport jump after answering.** The Next button takes keyboard focus with `preventScroll`, so a wrong answer no longer scrolls the phone down to the feedback; the top bar's tools also move to their own row on narrow screens instead of squeezing the exercise title
+
 ## 0.8.3 — 2026-10-17
 
 - 🗑️ **Clear one exercise's history from its stats card.** Next to ▶ Practice there is now a Clear button: the first tap arms it ("Clear 12 answers? Tap again"), the second one wipes only that exercise — its per-item records, module totals, confusion pairs and per-answer breakdown — while every other exercise and the global totals are recomputed from what is left. Disabled when the exercise has no data; the armed state disarms itself after four seconds

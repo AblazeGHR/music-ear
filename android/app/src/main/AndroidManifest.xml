@@ -4,6 +4,10 @@
     <!-- Only needed for the web font; the app itself is fully offline. -->
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- Voice answering: microphone is opened only while the voice switch is
+         on, and audio never leaves the device (on-device Vosk model). -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
     <application
         android:allowBackup="true"
         android:enableOnBackInvokedCallback="false"

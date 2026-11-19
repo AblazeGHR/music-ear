@@ -1,9 +1,11 @@
 package app.earpath;
 
+import android.Manifest;
 import android.app.Activity;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
@@ -34,15 +36,18 @@ import java.util.Map;
  * modules (the app is plain <script type="module">) and localStorage require a
  * real origin. Requests for that origin are answered from assets/www.
  */
-public class MainActivity extends Activity {
+public class MainActivity extends Activity implements SpeechBridge.Host {
 
     private static final String TAG = "earpath";
     private static final String APP_HOST = "appassets.androidplatform.net";
     private static final String START_URL = "https://" + APP_HOST + "/index.html";
     private static final int BG = 0xFF0B0E14;
 
+    private static final int MIC_REQUEST = 71;
+
     private WebView web;
     private TtsBridge tts;
+    private SpeechBridge speech;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -75,8 +80,11 @@ public class MainActivity extends Activity {
         boolean debuggable = (getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0;
         WebView.setWebContentsDebuggingEnabled(debuggable);
 
-        tts = new TtsBridge(this);
+        tts = new TtsBridge(this, web);
         web.addJavascriptInterface(tts, "AndroidTTS");
+
+        speech = new SpeechBridge(this, web, this);
+        web.addJavascriptInterface(speech, "AndroidASR");
 
         FrameLayout root = new FrameLayout(this);
         root.setBackgroundColor(BG);
@@ -122,9 +130,32 @@ public class MainActivity extends Activity {
     @Override
     protected void onDestroy() {
         web.removeJavascriptInterface("AndroidTTS");
+        web.removeJavascriptInterface("AndroidASR");
+        if (speech != null) speech.shutdown();
         if (tts != null) tts.shutdown();
         web.destroy();
         super.onDestroy();
+    }
+
+    // ── microphone permission (voice answering) ────────────────────────────
+
+    @Override
+    public boolean hasMicPermission() {
+        return checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED;
+    }
+
+    @Override
+    public void requestMicPermission() {
+        requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, MIC_REQUEST);
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int code, String[] permissions, int[] results) {
+        super.onRequestPermissionsResult(code, permissions, results);
+        if (code == MIC_REQUEST && speech != null) {
+            speech.onPermissionResult(results.length > 0
+                    && results[0] == PackageManager.PERMISSION_GRANTED);
+        }
     }
 
     /** Back walks the app's own hash history before leaving the app. */
@@ -139,7 +170,9 @@ public class MainActivity extends Activity {
         @Override
         public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
             Uri url = request.getUrl();
-            if (url == null || !APP_HOST.equals(url.getHost())) return null;
+            // The APK is self-contained: external resources are refused rather
+            // than fetched, so a stray URL cannot leak or stall offline use.
+            if (url == null || !APP_HOST.equals(url.getHost())) return blocked();
             return asset(url.getPath());
         }
 
@@ -170,6 +203,10 @@ public class MainActivity extends Activity {
         } catch (IOException e) {
             return notFound();
         }
+    }
+
+    private static WebResourceResponse blocked() {
+        return new WebResourceResponse("text/plain", "utf-8", 403, "Forbidden", null, null);
     }
 
     private static WebResourceResponse notFound() {

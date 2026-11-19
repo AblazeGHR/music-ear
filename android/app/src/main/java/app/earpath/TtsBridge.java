@@ -6,8 +6,10 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.speech.tts.TextToSpeech;
+import android.speech.tts.UtteranceProgressListener;
 import android.util.Log;
 import android.webkit.JavascriptInterface;
+import android.webkit.WebView;
 
 import java.util.Locale;
 
@@ -24,12 +26,14 @@ public class TtsBridge {
     private static final String TAG = "earpath-tts";
 
     private final Handler main = new Handler(Looper.getMainLooper());
+    private final WebView web;
     private TextToSpeech engine;
     private volatile boolean ready;
     private String pendingText;
     private float pendingVolume = 1f;
 
-    TtsBridge(Context context) {
+    TtsBridge(Context context, WebView web) {
+        this.web = web;
         engine = new TextToSpeech(context.getApplicationContext(), status -> {
             if (engine == null) return;          // activity already destroyed
             if (status != TextToSpeech.SUCCESS) {
@@ -45,6 +49,11 @@ public class TtsBridge {
                     .setUsage(AudioAttributes.USAGE_MEDIA)
                     .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
                     .build());
+            engine.setOnUtteranceProgressListener(new UtteranceProgressListener() {
+                @Override public void onStart(String id) { }
+                @Override public void onDone(String id) { notifySpeechEnd(); }
+                @Override public void onError(String id) { notifySpeechEnd(); }
+            });
             ready = true;
             if (pendingText != null) {
                 speakNow(pendingText, pendingVolume);
@@ -79,6 +88,13 @@ public class TtsBridge {
     @JavascriptInterface
     public boolean isReady() {
         return ready;
+    }
+
+    /** Lets the page resume listening only after the TTS line has finished. */
+    private void notifySpeechEnd() {
+        main.post(() -> {
+            if (web != null) web.evaluateJavascript("window.__speechEnd&&window.__speechEnd()", null);
+        });
     }
 
     private void speakNow(String text, float volume) {

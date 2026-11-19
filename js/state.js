@@ -19,6 +19,7 @@ const DEFAULT_SETTINGS = {
   degreeLabels: 'solfege',   // 'solfege' | 'number'
   melodyTempo: 0.55,         // seconds per note
   tapWindowMs: 350,          // gesture mode: wait for another tap before answering
+  voiceTimeoutMin: 10,       // voice mode: stop after this long without a recognised answer
   exercises: {},             // moduleId -> question-config overrides (see moduleConfig)
 };
 
@@ -95,6 +96,14 @@ export function clearModule(moduleId) {
 // and the recognizer that consumes it.
 export const TAP_WINDOW_MIN = 100;
 export const TAP_WINDOW_MAX = 2000;
+export const VOICE_TIMEOUT_MIN = 1;
+export const VOICE_TIMEOUT_MAX = 60;
+export function clampVoiceTimeout(min) {
+  const n = Math.round(Number(min));
+  if (!Number.isFinite(n)) return DEFAULT_SETTINGS.voiceTimeoutMin;
+  return Math.min(VOICE_TIMEOUT_MAX, Math.max(VOICE_TIMEOUT_MIN, n));
+}
+
 export function clampTapWindow(ms) {
   const n = Math.round(Number(ms));
   if (!Number.isFinite(n)) return DEFAULT_SETTINGS.tapWindowMs;

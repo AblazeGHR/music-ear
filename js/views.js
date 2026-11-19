@@ -313,6 +313,13 @@ export function renderSettings(root) {
         max: State.TAP_WINDOW_MAX,
         onInput: v => { s.tapWindowMs = State.clampTapWindow(v); State.save(); },
       })),
+    row('Voice idle timeout', 'Voice mode turns itself off after this many minutes without a recognised answer or command (1–60). Default 10.',
+      numberInput(s.voiceTimeoutMin, {
+        min: State.VOICE_TIMEOUT_MIN,
+        max: State.VOICE_TIMEOUT_MAX,
+        step: 1,
+        onInput: v => { s.voiceTimeoutMin = State.clampVoiceTimeout(v); State.save(); },
+      })),
     row('Chord playback', 'Arpeggiating after the block chord helps you hear individual notes.',
       select(s.chordStyle, [
         ['block', 'Block chord only'],

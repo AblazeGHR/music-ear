@@ -5,6 +5,7 @@
 形态参考 [tonedear.com](https://tonedear.com/ear-training/intervals)：**没有关卡、解锁、连击或引导**——首页就是练习列表，点进去直接开练，每个练习自带 Options 面板，题目池、方向、音域全都可调。
 
 - ✋ **手势模式**（练习页右上角开关，为闭眼练习设计）：单击/连击 N 次 = 第 N 个选项（每击一声滴答便于计数）、**划直线 = 下一题**、**长按 = 退出手势模式**、画圈 = 重播；答错后**画两圈 = 语音播报答案名**（"You chose X. The answer was Y."，浏览器内置语音引擎，零依赖、不联网）；开启后除开关外**所有控件锁定**（含返回、Options、键盘快捷键），答错还会自动连播「你的选择 + 正确答案」两音。仅对选择题且当前选项 ≤8 个的练习开放
+- 🎙 **语音作答（选择题）**：练习页的 🎙 开关打开后**持续监听**，不用按住、也不用每题重新开——说选项名（"perfect fifth"、"major first inversion"、"C sharp"、"re"）或序号（"five"、"option three"）直接作答，`replay` / `next` / `names` / `stop listening` 执行对应动作；关掉开关或**连续无识别成功超过设定时长**（默认 10 分钟，设置里可调 1–60）才停止。安卓端用内置 Vosk 模型**离线**识别，网页端用浏览器的语音识别（需要网络）
 - ↕️ 答案按钮固定按乐理顺序排列（音程按半音升序、音级升序、罗马数字 I–vi…），与选项的点击顺序无关
 
 准确、可维护的乐理（music theory）数据、音频（audio）与判分（grading）优先于花哨 UI。
@@ -79,7 +80,7 @@ npm run deploy    # 需要环境变量 CLOUDFLARE_API_TOKEN
 
 ## 安卓应用（实验）
 
-同一份静态站点可以打包成离线安卓应用。`android/` 是一个**零第三方依赖**的原生壳（WebView + 内置资源 + 系统 TTS 桥），构建时把运行时文件复制进 APK，装上即可用、不联网也能练。
+同一份静态站点可以打包成离线安卓应用。`android/` 是一个原生壳（WebView + 内置静态资源 + 系统 TTS + 内置 Vosk 离线识别），构建时把运行时文件复制进 APK，装上即可用、飞行模式下也能完整练习。
 
 ```bash
 npm run android                     # → android/app/build/outputs/apk/debug/app-debug.apk
@@ -88,13 +89,16 @@ npm run android:icons               # 改过 assets/icon.svg 后重新生成启�
 ```
 
 - 需要 JDK 17+ 与 Android SDK（`ANDROID_HOME`）；Gradle 由 wrapper 首次运行时下载。最低 Android 8.0（API 26），WebView 建议 Chrome 80+。
-- 版本号与 versionCode 从 `js/config.js` 的 `APP_VERSION` 读取，不单独维护。
-- 安卓 WebView 没有可用的 Web Speech 语音，壳里通过 `AndroidTTS` 桥接系统 TTS，`js/speech.js` 检测到桥接时优先使用；壳内也不再注册 Service Worker（文件已在 APK 里）。
+- **体积约 51 MB**（arm64）：其中 ~40 MB 是离线语音模型，首次启动解压到应用私有目录（1–2 秒，带 "Preparing offline voice…"）。模型不提交进仓库，`npm run android` 首次构建会自动下载（`npm run android:model` 可单独执行）。
+- **语音完全离线**：Vosk small en-US + 每题动态 grammar（只允许当前选项名与四个命令），麦克风音频不出设备；不再依赖 Google 语音服务。
+- 安卓 WebView 没有可用的 Web Speech 语音，壳里通过 `AndroidTTS` 桥接系统 TTS，`js/speech.js` 检测到桥接时优先使用；壳内不注册 Service Worker（文件已在 APK 里）。
+- 字体（Outfit woff2）随包内置，WebView 对一切非本地请求返回 403，网页端也不再请求 Google Fonts。
 - 页面里指向 GitHub / changelog / mailto 的链接会交给系统浏览器或邮件应用打开。
 
 ## 数据与隐私
 
 - 进度与设置存于 localStorage（key `music-ear-v1`），可 JSON 导出/导入；无任何网络请求（不含分析与遥测）
+- 语音作答只在开启 🎙 时打开麦克风：安卓端识别全在本机完成；网页端交给浏览器的语音识别服务（Chrome 会发送到 Google，可能因网络不可用而失败），本应用不接收也不保存音频
 - 0.3.x 及更早使用旧 key `earpath-v1` 与关卡制数据结构，不兼容且不会被读取
 
 ## 上游归属与许可证

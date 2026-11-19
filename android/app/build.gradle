@@ -25,6 +25,10 @@ android {
         targetSdk 35
         versionCode versionCodeValue
         versionName appVersion
+
+        // The offline speech model adds 40 MB; ship the ABI almost every phone
+        // since 2018 uses. Add armeabi-v7a here if 32-bit devices matter.
+        ndk { abiFilters 'arm64-v8a' }
     }
 
     buildTypes {
@@ -48,5 +52,8 @@ android {
     }
 }
 
-// No `dependencies` block on purpose — android.webkit, android.speech.tts and
-// the framework widgets cover everything this shell needs.
+// The one third-party dependency: Vosk's offline recogniser (Apache-2.0).
+// Everything else is framework code.
+dependencies {
+    implementation 'com.alphacephei:vosk-android:0.3.75'
+}

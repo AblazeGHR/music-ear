@@ -9,6 +9,7 @@ import { moduleById } from './curriculum.js';
 import { renderOptions } from './options.js';
 import { createRecognizer, bindPointerSurface } from './gesture.js';
 import { speakMiss, cancelSpeech, speechAvailable, spokenAnswerName } from './speech.js';
+import { voiceSupported, createVoiceController } from './voice.js';
 import { createPiano } from './piano.js';
 import { midiName } from './theory.js';
 import { track } from './analytics.js';
@@ -66,6 +67,11 @@ function runSession(root, cfg) {
     class: 'gesture-switch', role: 'switch', 'aria-checked': 'false',
     onclick: () => setGesture(!gestureOn),
   }, 'Gesture');
+  const voiceBtn = h('button', {
+    class: 'gesture-switch voice-switch', role: 'switch', 'aria-checked': 'false',
+    title: 'Answer by voice', 'aria-label': 'Answer by voice',
+    onclick: () => setVoice(!voiceOn),
+  }, '🎙');
   const helpBtn = h('button', {
     class: 'gesture-help-btn', 'aria-label': 'How gestures map to the buttons', title: 'How gestures map to the buttons',
     onclick: () => showHelp(),
@@ -76,6 +82,9 @@ function runSession(root, cfg) {
   }, '📊');
   const kbdEl = h('div', { class: 's-kbd' }, KBD_HINT);
   const overlay = h('div', { class: 'gesture-overlay' });
+  const voiceText = h('span', { class: 'v-text' });
+  const voiceBar = h('div', { class: 's-voice', role: 'status', 'aria-live': 'polite' },
+    h('span', { class: 'v-dot' }), voiceText);
 
   // How long the app waits for another tap before taking the answer; any
   // value the user set in Settings, clamped to something usable here.
@@ -102,6 +111,7 @@ function runSession(root, cfg) {
   const unbindGestures = bindPointerSurface(overlay, recognizer);
 
   function setGesture(on) {
+    if (on && voiceOn) setVoice(false);
     gestureOn = on;
     shell.classList.toggle('gesture-on', on);
     gestureBtn.classList.toggle('on', on);
@@ -109,6 +119,44 @@ function runSession(root, cfg) {
     kbdEl.textContent = on ? GESTURE_HINT : KBD_HINT;
     recognizer.reset();
     if (on) { hideHelp(); Audio.playNote(76, 0.1, 1, { lead: UI_LEAD }); }   // audible "it's on"
+  }
+
+  function setVoice(on) {
+    if (on && !voiceSupported()) return;
+    if (on && (!q || q.kind !== 'choice')) return;
+    if (on && gestureOn) setGesture(false);
+    voiceOn = on;
+    shell.classList.toggle('voice-on', on);
+    voiceBtn.classList.toggle('on', on);
+    voiceBtn.setAttribute('aria-checked', String(on));
+    clearTimeout(voiceHintTimer);
+    if (on) {
+      Audio.unlock();
+      hideHelp();
+      Audio.playNote(76, 0.1, 1, { lead: UI_LEAD });
+      setVoiceStatus('Starting…');
+      voice.enable();
+    } else {
+      voice.disable();
+      setVoiceStatus('');
+    }
+  }
+
+  function setVoiceStatus(text, transient = false) {
+    voiceText.textContent = text || '';
+    voiceBar.classList.toggle('show', !!text);
+    clearTimeout(voiceHintTimer);
+    if (transient && text) {
+      voiceHintTimer = setTimeout(() => {
+        if (!voiceOn) { voiceText.textContent = ''; voiceBar.classList.remove('show'); }
+      }, 6000);
+    }
+  }
+
+  function syncVoiceAffordance() {
+    const eligible = !!q && q.kind === 'choice' && voiceSupported();
+    voiceBtn.classList.toggle('hidden', !eligible);
+    if (!eligible && voiceOn) setVoice(false);
   }
 
   // ── gesture help: what each gesture stands in for ──────────────────────────
@@ -168,14 +216,72 @@ function runSession(root, cfg) {
       h('div', { class: 's-title' },
         h('div', {}, cfg.title),
         h('div', { class: 's-sub' }, cfg.blurb)),
-      scoreEl, gestureBtn, helpBtn, statsBtn),
+      h('div', { class: 's-tools' },
+        scoreEl, voiceBtn, gestureBtn, helpBtn, statsBtn)),
     h('main', { class: 's-body' },
       h('div', { class: 's-stage' }, playBtn, promptEl, howToEl),
-      answersEl, feedbackEl, actionsEl,
+      answersEl, feedbackEl, voiceBar, actionsEl,
       optionsEl,
       kbdEl),
     overlay);
   root.append(shell);
+
+  // ── voice mode (spoken answers, on-device on Android) ─────────────────────
+  let voiceOn = false;
+  let voiceHintTimer = null;
+
+  const voice = createVoiceController({
+    getCtx: () => (q && q.kind === 'choice'
+      ? { moduleId: cfg.moduleId, options: q.options }
+      : null),
+    getIdleMinutes: () => State.state.settings.voiceTimeoutMin,
+    onAnswer: intent => {
+      if (answered || !q) return;
+      if (!everPlayed) { setVoiceStatus('Play the question first — say “replay”'); return; }
+      answerChoice(intent.id);
+    },
+    onCommand: name => {
+      if (name === 'replay') { Audio.unlock(); playQ(); }
+      else if (name === 'next') { clearAuto(); nextQuestion(); }
+      else if (name === 'names') {
+        if (answered && lastResultCorrect === false && lastChoiceId !== null && q) {
+          Audio.stopAll();
+          speakMiss(cfg.moduleId, lastChoiceId, q.answerId);
+        }
+      } else if (name === 'stop') setVoice(false);
+    },
+    onHeard: (text, intent) => {
+      if (!voiceOn) return;
+      setVoiceStatus(intent && intent.type === 'none'
+        ? `Heard “${text}” — no match`
+        : `Heard “${text}”`);
+    },
+    onState: (state, detail) => {
+      if (state === 'timeout') {
+        setVoice(false);
+        const mins = Number(detail) || 10;
+        setVoiceStatus(`Voice mode stopped after ${mins} minute${mins === 1 ? '' : 's'} without a recognised answer`, true);
+        return;
+      }
+      if (state === 'fatal') {
+        setVoice(false);
+        setVoiceStatus(detail === 'network'
+          ? 'Voice recognition needs a network here — use the buttons'
+          : 'Voice unavailable — use the buttons', true);
+        return;
+      }
+      if (!voiceOn) return;
+      if (state === 'preparing') setVoiceStatus('Preparing offline voice…');
+      else if (state === 'ready') setVoiceStatus('Voice ready');
+      else if (state === 'listening') setVoiceStatus('Listening — say an option name, a number, or “replay”');
+      else if (state === 'paused') setVoiceStatus('Paused while the sound plays');
+      else if (state === 'error') {
+        setVoiceStatus(detail === 'permission'
+          ? 'Microphone blocked — allow it in system settings'
+          : 'Recognition hiccup — still listening…', true);
+      }
+    },
+  });
 
   // ── helpers ────────────────────────────────────────────────────────────────
   function updateScore() {
@@ -208,6 +314,8 @@ function runSession(root, cfg) {
 
   async function playQ() {
     if (!q) return;
+    const holdVoice = voiceOn;
+    if (holdVoice) voice.pause();
     everPlayed = true;
     playBtn.classList.add('playing');
     shell.classList.remove('awaiting-play');
@@ -225,7 +333,10 @@ function runSession(root, cfg) {
         qPlays++;
         await (replay ? q.replay() : q.play());
       }
-    } finally { playBtn.classList.remove('playing'); }
+    } finally {
+      playBtn.classList.remove('playing');
+      if (holdVoice) voice.resume();
+    }
     playBtn.textContent = '↻';
   }
 
@@ -254,8 +365,14 @@ function runSession(root, cfg) {
     renderAnswers();
     updateScore();
     syncGestureAffordance();
+    syncVoiceAffordance();
     if (everPlayed) playQ();
-    else shell.classList.add('awaiting-play');
+    else {
+      shell.classList.add('awaiting-play');
+      // A spoken "next" before the first play leaves the grammar from the
+      // previous question loaded; restart so the new options are recognised.
+      if (voiceOn) { voice.pause(); voice.resume(); }
+    }
   }
 
   function finishAnswer(result, extraFeedback) {
@@ -284,7 +401,10 @@ function runSession(root, cfg) {
     if (result.correct && State.state.settings.autoAdvance) {
       autoTimer = setTimeout(nextQuestion, 1100);
     } else {
-      nextBtn.focus();
+      // Move the keyboard focus to Next without scrolling: on a phone the
+      // feedback + buttons push the page down, and yanking the viewport after
+      // every answer breaks the rhythm of continuous practice.
+      nextBtn.focus({ preventScroll: true });
     }
   }
 
@@ -516,6 +636,7 @@ function runSession(root, cfg) {
     document.removeEventListener('keydown', onKeydown);
     hideHelp();
     unbindGestures();
+    voice.dispose();
     compareRun++;
     cancelSpeech();
     clearAuto();

@@ -39,6 +39,16 @@ export function spokenAnswerName(moduleId, id) {
 // Android's WebView reports `speechSynthesis` but ships no voices, so the app
 // shell injects a native bridge instead (see android/.../TtsBridge.java). It
 // wins whenever it exists.
+// Voice mode listens for these to stop the microphone while the app speaks.
+function emit(name) {
+  if (typeof window === 'undefined' || typeof window.dispatchEvent !== 'function') return;
+  window.dispatchEvent(new Event(name));
+}
+if (typeof window !== 'undefined') {
+  // Called by the Android TTS bridge when an utterance finishes.
+  window.__speechEnd = () => emit('music-ear:speech-end');
+}
+
 function nativeTts() {
   const bridge = typeof window !== 'undefined' ? window.AndroidTTS : null;
   return bridge && typeof bridge.speak === 'function' ? bridge : null;
@@ -52,15 +62,18 @@ export function speechAvailable() {
 // the platform has no speech engine at all, so callers can fall back to audio.
 export function speak(text) {
   if (!text) return false;
+  emit('music-ear:speech-start');
   const bridge = nativeTts();
   if (bridge) {
     bridge.speak(text, State.state.settings.volume ?? 1);
     return true;
   }
-  if (!speechAvailable()) return false;
+  if (!speechAvailable()) { emit('music-ear:speech-end'); return false; }
   const synth = window.speechSynthesis;
   synth.cancel();
   const u = new SpeechSynthesisUtterance(text);
+  u.onend = () => emit('music-ear:speech-end');
+  u.onerror = () => emit('music-ear:speech-end');
   const voice = synth.getVoices().find(v => /^en/i.test(v.lang));
   if (voice) u.voice = voice;
   u.lang = voice?.lang ?? 'en-US';
@@ -81,6 +94,7 @@ export function speakMiss(moduleId, pickedId, answerId) {
 }
 
 export function cancelSpeech() {
+  emit('music-ear:speech-end');
   const bridge = nativeTts();
   if (bridge && typeof bridge.cancel === 'function') bridge.cancel();
   if (typeof window !== 'undefined' && 'speechSynthesis' in window) window.speechSynthesis.cancel();
