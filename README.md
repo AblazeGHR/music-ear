@@ -83,10 +83,14 @@ npm run deploy    # 需要环境变量 CLOUDFLARE_API_TOKEN
 同一份静态站点可以打包成离线安卓应用。`android/` 是一个原生壳（WebView + 内置静态资源 + 系统 TTS + 内置 Vosk 离线识别），构建时把运行时文件复制进 APK，装上即可用、飞行模式下也能完整练习。
 
 ```bash
-npm run android                     # → android/app/build/outputs/apk/debug/app-debug.apk
-npm run android -- assembleRelease  # 未签名 release 包（签名需自备 keystore）
+npm run android                     # 中文 debug APK（默认，内置中文模型）
+npm run android:en                  # 英文 debug APK（内置英文模型）
+npm run android:release             # 中文 release 包（未签名，需自备 keystore）
+npm run android:en:release          # 英文 release 包（未签名）
 npm run android:icons               # 改过 assets/icon.svg 后重新生成启动图标（需 Pillow）
 ```
+
+每个 APK **只带一种语言的语音模型**（约 40 MB），启动时以 `?lang=zh|en` 锁定界面与识别语言；想要两种语言可切换，用网页版或另建一个包含双模型的构建。
 
 - 需要 JDK 17+ 与 Android SDK（`ANDROID_HOME`）；Gradle 由 wrapper 首次运行时下载。最低 Android 8.0（API 26），WebView 建议 Chrome 80+。
 - **体积约 51 MB**（arm64）：其中 ~40 MB 是离线语音模型，首次启动解压到应用私有目录（1–2 秒，带 "Preparing offline voice…"）。模型不提交进仓库，`npm run android` 首次构建会自动下载（`npm run android:model` 可单独执行）。
