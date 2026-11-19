@@ -44,6 +44,9 @@ function ordinalWord(n) {
   return [...parts, ord].join(' ');
 }
 
+const ORDINAL_TO_NUMBER = new Map();
+for (let i = 1; i <= 99; i++) ORDINAL_TO_NUMBER.set(ordinalWord(i), i);
+
 // Words people (and recognisers) add around the answer. Articles are handled
 // separately: a lone "A" is a note name, "a major chord" is not.
 const FILLER = new Set([
@@ -92,6 +95,10 @@ const tokensOf = norm => norm.split(' ').filter(Boolean);
 
 function parseNumberWords(words) {
   if (!words.length || words.length > 3) return null;
+  // "first", "twenty third" — people answer with ordinals as often as with
+  // cardinals, and the UI numbers the buttons 1, 2, 3…
+  const ordinal = ORDINAL_TO_NUMBER.get(words.join(' '));
+  if (ordinal) return ordinal;
   let total = 0;
   for (const w of words) {
     const one = ONES.indexOf(w);
@@ -364,5 +371,19 @@ export function parseIntent(transcript, ctx = {}) {
 export function grammarPhrases(ctx) {
   const set = new Set(COMMAND_PHRASES);
   for (const alias of aliasMapFor(ctx).keys()) set.add(alias);
+
+  // The recogniser only hears words the grammar contains, so the spoken
+  // numbers must be in it too — otherwise "one" is simply not decoded.
+  const count = ctx.options?.length ?? 0;
+  for (let i = 1; i <= count; i++) {
+    const card = numberWord(i);
+    const ord = ordinalWord(i);
+    set.add(card);
+    set.add(ord);
+    set.add(`option ${card}`);
+    set.add(`number ${card}`);
+    set.add(`option ${ord}`);
+    set.add(`number ${ord}`);
+  }
   return [...set].filter(p => /^[\x20-\x7e]+$/.test(p));
 }

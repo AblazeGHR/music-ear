@@ -102,6 +102,14 @@ test('explicit numbers pick the button, in display order', () => {
   assert.equal(parseIntent('choice two', c).id, 'do');
 });
 
+test('ordinals work as numbers too', () => {
+  const c = ctx('intervals', POOLS.intervals);
+  assert.equal(parseIntent('first', c).index, 1);
+  assert.equal(parseIntent('option first', c).index, 1);
+  assert.equal(parseIntent('number third', c).index, 3);
+  assert.equal(parseIntent('twenty third', ctx('chords', POOLS.chords)).index, 23);
+});
+
 test('bare numbers are an index only when no name matches', () => {
   const chords = ctx('chords', POOLS.chords);
   assert.equal(parseIntent('seven', chords).via, 'index');

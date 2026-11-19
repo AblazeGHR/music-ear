@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.1 — 2026-11-19
+
+- 🎙 **Number answers now actually reach the recogniser on Android.** The on-device grammar only contained option names and commands, so "one" was never decoded even though the parser accepted it. The grammar now also carries the spoken cardinals, ordinals and "option / number …" forms for every visible button
+- **Ordinals count as numbers** everywhere: "first", "option first", "twenty third" pick that button, alongside "one" / "option one"
+- When a word is also part of an option name, the name still wins (Scale Degrees "three" = Mi); say "option three" to answer by position
+
 ## 0.9.0 — 2026-11-19
 
 - 🎙 **Voice answering for the choice exercises.** Turn on the mic switch and keep practising hands-free: say an option's name ("perfect fifth", "major first inversion", "C sharp", "re") or its number ("five", "option three") and it answers. Voice commands: **replay**, **next**, **names** (speak the miss), **stop listening**
