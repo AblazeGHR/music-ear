@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.2 — 2026-11-19
+
+- ✋🎙 **Gesture mode and voice mode can be on at the same time.** Enabling one used to switch the other off, which looked like the gesture button had been removed. Both switches now stay on; whichever input produces an answer first wins, and the other is ignored by the answered guard
+- The gesture switch is still offered only on multiple-choice exercises with at most eight options — progressions and melodies never had it, by design (counting a dozen taps blind is not a skill worth training)
+
 ## 0.9.1 — 2026-11-19
 
 - 🎙 **Number answers now actually reach the recogniser on Android.** The on-device grammar only contained option names and commands, so "one" was never decoded even though the parser accepted it. The grammar now also carries the spoken cardinals, ordinals and "option / number …" forms for every visible button
