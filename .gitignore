@@ -23,3 +23,6 @@ android/app/src/main/assets/asr-model/
 .cache/
 *.jks
 *.keystore
+
+# Browser-automation artifacts
+.playwright-mcp/
