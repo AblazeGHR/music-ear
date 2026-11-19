@@ -40,12 +40,13 @@ public class SpeechBridge {
 
     private static final String TAG = "earpath-asr";
     private static final String MODEL_DIR = "asr-model";
-    private static final String MODEL_VERSION = "vosk-small-en-us-0.15";
+    private static final String MODEL_VERSION = "v1";
     private static final int RATE = 16000;
 
     private final Context context;
     private final WebView web;
     private final Host host;
+    private final String language;
     private final Handler main = new Handler(Looper.getMainLooper());
 
     private volatile Model model;
@@ -56,10 +57,11 @@ public class SpeechBridge {
     private boolean preparing;
     private String pendingGrammar;
 
-    SpeechBridge(Context context, WebView web, Host host) {
+    SpeechBridge(Context context, WebView web, Host host, String language) {
         this.context = context.getApplicationContext();
         this.web = web;
         this.host = host;
+        this.language = language == null || language.isEmpty() ? "en" : language;
     }
 
     /** Load the model in the background; safe to call repeatedly. */
@@ -73,7 +75,9 @@ public class SpeechBridge {
         new Thread(() -> {
             try {
                 LibVosk.setLogLevel(LogLevel.WARNINGS);
-                File dir = new File(context.getFilesDir(), MODEL_DIR + "-" + MODEL_VERSION);
+                // Keyed by language: installing the English APK over the Chinese
+                // one (same applicationId) must not reuse the old model.
+                File dir = new File(context.getFilesDir(), "asr-" + language + "-" + MODEL_VERSION);
                 File marker = new File(dir, ".ready");
                 if (!marker.exists()) {
                     Log.d(TAG, "unpacking model into " + dir);

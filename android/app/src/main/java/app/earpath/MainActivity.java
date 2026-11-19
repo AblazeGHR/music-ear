@@ -48,6 +48,7 @@ public class MainActivity extends Activity implements SpeechBridge.Host {
     private WebView web;
     private TtsBridge tts;
     private SpeechBridge speech;
+    private String appLang = "en";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -83,7 +84,8 @@ public class MainActivity extends Activity implements SpeechBridge.Host {
         tts = new TtsBridge(this, web);
         web.addJavascriptInterface(tts, "AndroidTTS");
 
-        speech = new SpeechBridge(this, web, this);
+        appLang = readAppLanguage();
+        speech = new SpeechBridge(this, web, this, appLang);
         web.addJavascriptInterface(speech, "AndroidASR");
 
         FrameLayout root = new FrameLayout(this);
@@ -158,15 +160,20 @@ public class MainActivity extends Activity implements SpeechBridge.Host {
         }
     }
 
-    /** The build's language is fixed in the manifest; the page reads ?lang=. */
-    private String startUrl() {
-        String lang = "";
+    private String readAppLanguage() {
         try {
             ApplicationInfo info = getPackageManager()
                     .getApplicationInfo(getPackageName(), PackageManager.GET_META_DATA);
-            lang = info.metaData == null ? "" : info.metaData.getString("app.lang", "");
-        } catch (Exception ignored) { }
-        return lang.isEmpty() ? START_URL : START_URL + "?lang=" + lang;
+            String lang = info.metaData == null ? "" : info.metaData.getString("app.lang", "");
+            return lang == null || lang.isEmpty() ? "en" : lang;
+        } catch (Exception ignored) {
+            return "en";
+        }
+    }
+
+    /** The build's language is fixed in the manifest; the page reads ?lang=. */
+    private String startUrl() {
+        return START_URL + "?lang=" + appLang;
     }
 
     /** Back walks the app's own hash history before leaving the app. */
