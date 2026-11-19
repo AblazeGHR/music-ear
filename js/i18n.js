@@ -10,7 +10,7 @@
 // Android lean builds pass ?lang=zh|en, which locks the language: the switch
 // in Settings is hidden there.
 
-import { ZH, ZH_TEMPLATES } from './i18n.zh.js';
+import { ZH, ZH_TEMPLATES, THEORY_ZH } from './i18n.zh.js';
 
 const SKIP_TAGS = new Set(['SCRIPT', 'STYLE', 'TEXTAREA', 'CODE', 'PRE', 'SVG']);
 const ATTRS = ['title', 'aria-label', 'placeholder'];
@@ -44,6 +44,16 @@ export function initLanguage(stored) {
 
 export function language() { return current; }
 export function isLanguageFixed() { return fixed !== null; }
+
+const PITCH_ZH = { up: '更高', down: '更低', same: '相同' };
+
+/** Chinese display name for an answer id; falls back in English mode. */
+export function theoryName(moduleId, id, fallback) {
+  if (current !== 'zh') return fallback;
+  if (moduleId === 'pitch') return PITCH_ZH[id] ?? fallback;
+  const table = THEORY_ZH[moduleId];
+  return table?.[id] ?? fallback;
+}
 
 /** Exact dictionary lookup, preserving surrounding whitespace. */
 export function t(text) {

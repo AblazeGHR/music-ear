@@ -6,7 +6,7 @@
 import { INTERVALS, CHORDS, SCALES, DEGREES, pitchClassName } from './theory.js';
 import * as State from './state.js';
 import { language } from './i18n.js';
-import { ZH } from './i18n.zh.js';
+import { THEORY_ZH } from './i18n.zh.js';
 
 // English voices read solfege syllables wrong ("Re" → "ray"), so the spoken
 // form is spelled the way it should sound.
@@ -25,10 +25,10 @@ const NUMBER_ZH = ['', '一', '二', '三', '四', '五', '六', '七', '八', '
 // syllable would be ambiguous with its altered form.
 function spokenNameZh(moduleId, id) {
   switch (moduleId) {
-    case 'intervals': return ZH[INTERVALS[id]?.name] ?? INTERVALS[id]?.name ?? null;
-    case 'scales': return ZH[SCALES[id]?.name] ?? SCALES[id]?.name ?? null;
+    case 'intervals': return THEORY_ZH.intervals[id] ?? INTERVALS[id]?.name ?? null;
+    case 'scales': return THEORY_ZH.scales[id] ?? SCALES[id]?.name ?? null;
     case 'chords': {
-      const name = ZH[CHORDS[id]?.name] ?? CHORDS[id]?.name;
+      const name = THEORY_ZH.chords[id] ?? CHORDS[id]?.name;
       return name ? name.replace('（', '，').replace('）', '') : null;
     }
     case 'degrees': {

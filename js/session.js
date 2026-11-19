@@ -10,6 +10,7 @@ import { renderOptions } from './options.js';
 import { createRecognizer, bindPointerSurface } from './gesture.js';
 import { speakMiss, cancelSpeech, speechAvailable, spokenAnswerName } from './speech.js';
 import { voiceSupported, createVoiceController } from './voice.js';
+import { theoryName } from './i18n.js';
 import { createPiano } from './piano.js';
 import { midiName } from './theory.js';
 import { track } from './analytics.js';
@@ -57,7 +58,7 @@ function runSession(root, cfg) {
   // not offered there.
   const MAX_GESTURE_OPTIONS = 8;
   const KBD_HINT = '1–9 answer · R replay · ⏎ next · ⌫ undo';
-  const GESTURE_HINT = 'Tap ×N = option N · Swipe = next · Hold = off · Circle = replay · 2 circles = names';
+  const GESTURE_HINT = 'Tap ×N = option N (after a miss: play it) · Swipe = next · Hold = off · Circle = replay · 2 circles = names';
   let gestureOn = false;
   let compareRun = 0;          // generation counter for the A/B playback
   let lastChoiceId = null;
@@ -177,7 +178,7 @@ function runSession(root, cfg) {
         h('p', { class: 'muted' }, 'With the switch on, these gestures stand in for the buttons:'),
         h('div', { class: 'gh-rows' },
           ghRow('Tap once', 'the 1st answer button'),
-          ghRow('Tap N times', 'the Nth answer button — a tick plays on every tap so you can count with your eyes closed'),
+          ghRow('Tap N times', 'the Nth answer button — a tick plays on every tap so you can count with your eyes closed. After a miss it plays that option instead'),
           ghRow('Swipe a line', 'Next → — or skip the question if you have not answered'),
           ghRow('Draw a circle', '▶ Play / replay — after a wrong answer it plays your pick, then the real one'),
           ghRow('Circle twice', 'after a wrong answer, speaks your pick and then the real one — the 🔊 Names button does the same'),
@@ -194,10 +195,12 @@ function runSession(root, cfg) {
 
   // Tap count → answer. Choice questions only; ignored before the first play.
   function submitByCount(n) {
-    if (!q || answered || !everPlayed) return;
+    if (!q || !everPlayed) return;
     if (q.kind !== 'choice') return;
     if (n < 1 || n > q.options.length) return;
-    answerChoice(q.options[n - 1].id);
+    const id = q.options[n - 1].id;
+    if (!answered) answerChoice(id);
+    else if (lastResultCorrect === false) auditionChoice(id);
   }
 
   function syncGestureAffordance() {
@@ -236,9 +239,10 @@ function runSession(root, cfg) {
       : null),
     getIdleMinutes: () => State.state.settings.voiceTimeoutMin,
     onAnswer: intent => {
-      if (answered || !q) return;
+      if (!q) return;
       if (!everPlayed) { setVoiceStatus('Play the question first — say “replay”'); return; }
-      answerChoice(intent.id);
+      if (!answered) { answerChoice(intent.id); return; }
+      if (lastResultCorrect === false) auditionChoice(intent.id);
     },
     onCommand: name => {
       if (name === 'replay') { Audio.unlock(); playQ(); }
@@ -424,22 +428,45 @@ function runSession(root, cfg) {
   }
 
   // choice ────────────────────────────────────────────────────────────────────
+  // Chord/scale names collide in English ("Major"), so translations are looked
+  // up by module id rather than by the rendered label.
+  const displayLabel = opt => theoryName(cfg.moduleId, opt.id, opt.label);
+
   function renderChoice() {
     optionBtns = q.options.map((opt, i) =>
-      h('button', { class: 'opt', onclick: () => answerChoice(opt.id) },
+      h('button', { class: 'opt', 'data-no-i18n': '', onclick: () => onOptionClick(opt.id) },
         i < 10 ? h('span', { class: 'opt-kbd' }, String((i + 1) % 10)) : null,
-        h('span', { class: 'opt-label' }, opt.label),
+        h('span', { class: 'opt-label' }, displayLabel(opt)),
         opt.sub ? h('span', { class: 'opt-sub' }, opt.sub) : null));
     answersEl.append(h('div', { class: 'opt-grid' }, optionBtns));
+  }
+
+  // After a miss every option stays live as a preview: tapping it (or saying
+  // its name, or tapping it N times in gesture mode) plays that option.
+  async function auditionChoice(id) {
+    if (!q || q.kind !== 'choice' || typeof q.playOption !== 'function') return;
+    Audio.unlock();
+    compareRun++;
+    Audio.stopAll();
+    const holdVoice = voiceOn;
+    if (holdVoice) voice.pause();
+    try { await q.playOption(id); } finally { if (holdVoice) voice.resume(); }
+  }
+
+  function onOptionClick(id) {
+    if (!answered) { answerChoice(id); return; }
+    if (lastResultCorrect === false) auditionChoice(id);
   }
 
   function answerChoice(id) {
     if (answered || !everPlayed) return;
     lastChoiceId = id;
     const result = q.grade(id);
+    const canAudition = !result.correct && typeof q.playOption === 'function';
     for (let i = 0; i < q.options.length; i++) {
       const opt = q.options[i], btn = optionBtns[i];
-      btn.disabled = true;
+      btn.disabled = !canAudition;
+      if (canAudition) btn.classList.add('audition');
       if (opt.id === q.answerId) btn.classList.add('good');
       else if (opt.id === id) btn.classList.add('bad');
       else btn.classList.add('dim');
@@ -449,12 +476,16 @@ function runSession(root, cfg) {
     if (!result.correct) {
       const yourOpt = q.options.find(o => o.id === id);
       extra.push(h('div', { class: 'fb-detail' },
-        `It was ${correctOpt.label} — you chose ${yourOpt.label}.`));
+        `It was ${displayLabel(correctOpt)} — you chose ${displayLabel(yourOpt)}.`));
+      if (typeof q.playOption === 'function') {
+        extra.push(h('div', { class: 'tiny muted' },
+          'Tap any option (or say its name) to hear it.'));
+      }
       const compareBtns = [];
       if (q.playOption) {
         compareBtns.push(
-          h('button', { class: 'btn small', onclick: () => q.playOption(id) }, '▶ Your pick'),
-          h('button', { class: 'btn small', onclick: () => q.playOption(q.answerId) }, '▶ Answer'));
+          h('button', { class: 'btn small', onclick: () => auditionChoice(id) }, '▶ Your pick'),
+          h('button', { class: 'btn small', onclick: () => auditionChoice(q.answerId) }, '▶ Answer'));
       }
       // The button equivalent of the two-circle gesture: speak the names.
       // Hidden when the platform has no speech engine or the names are unknown.
@@ -468,7 +499,7 @@ function runSession(root, cfg) {
       }
       if (compareBtns.length) extra.push(h('div', { class: 'fb-compare' }, ...compareBtns));
     } else {
-      extra.push(h('div', { class: 'fb-detail' }, correctOpt.label));
+      extra.push(h('div', { class: 'fb-detail' }, displayLabel(correctOpt)));
     }
     if (q.mnemonic) extra.push(h('div', { class: 'fb-mnemonic' }, `♪ ${q.mnemonic}`));
     finishAnswer(result, extra);
@@ -618,11 +649,15 @@ function runSession(root, cfg) {
       if (q?.kind === 'melody') { e.preventDefault(); undoNote(); }
       return;
     }
-    if (/^[0-9]$/.test(e.key) && !answered) {
+    if (/^[0-9]$/.test(e.key)) {
       const idx = e.key === '0' ? 9 : Number(e.key) - 1;
+      if (!q?.options[idx]) return;
       Audio.unlock();
-      if (q?.kind === 'choice' && q.options[idx]) answerChoice(q.options[idx].id);
-      if (q?.kind === 'sequence' && q.options[idx]) fillSlot(q.options[idx].id);
+      if (q.kind === 'choice') {
+        if (!answered) answerChoice(q.options[idx].id);
+        else auditionChoice(q.options[idx].id);
+      }
+      if (q.kind === 'sequence' && !answered) fillSlot(q.options[idx].id);
     }
   }
   document.addEventListener('keydown', onKeydown);

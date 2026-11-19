@@ -17,6 +17,8 @@
 // Mi, so "three" answers Mi while "option three" picks the third button.
 
 import { INTERVALS, CHORDS, SCALES, DEGREES, pitchClassName } from './theory.js';
+import { ZH } from './i18n.zh.js';
+import { parseIntentZh } from './voice-intent-zh.js';
 
 const ONES = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven',
   'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen',
@@ -289,6 +291,7 @@ function containScore(t, aliasTokens) {
 }
 
 export function parseIntent(transcript, ctx = {}) {
+  if (ctx.language === 'zh') return parseIntentZh(transcript, ctx);
   const heard = String(transcript ?? '').trim();
   const norm = normalizeTranscript(heard);
   if (!norm) return { type: 'none', reason: 'empty', heard };
@@ -369,6 +372,9 @@ export function parseIntent(transcript, ctx = {}) {
 // The phrases handed to an on-device recogniser (Vosk grammar). Short, ASCII,
 // lowercase; the recogniser never invents words outside this list.
 export function grammarPhrases(ctx) {
+  // The Chinese model ships no word list, so grammar phrases cannot be
+  // verified against its vocabulary; use the language model instead.
+  if (ctx.language === 'zh') return [];
   const set = new Set(COMMAND_PHRASES);
   for (const alias of aliasMapFor(ctx).keys()) set.add(alias);
 

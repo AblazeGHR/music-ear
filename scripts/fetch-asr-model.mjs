@@ -40,17 +40,24 @@ function cachePaths(lang) {
 function download(url, dest, bytes) {
   mkdirSync(CACHE, { recursive: true });
   const part = `${dest}.part`;
+  const start = existsSync(part) ? statSync(part).size : 0;
+  if (start > 0) console.log(`  resuming at ${(start / 1048576).toFixed(1)} MB`);
   return new Promise((resolve, reject) => {
-    const req = get(url, { family: 4, headers: { 'user-agent': 'music-ear-build' } }, res => {
-      if (res.statusCode !== 200) {
+    const headers = { 'user-agent': 'music-ear-build' };
+    if (start > 0) headers.range = `bytes=${start}-`;
+    const req = get(url, { family: 4, headers }, res => {
+      if (res.statusCode !== 200 && res.statusCode !== 206) {
         reject(new Error(`model download failed: HTTP ${res.statusCode}`));
         res.resume();
         return;
       }
-      const total = Number(res.headers['content-length'] ?? bytes ?? 0);
-      let seen = 0;
+      const resumed = res.statusCode === 206 && start > 0;
+      const total = resumed
+        ? start + Number(res.headers['content-length'] ?? 0)
+        : Number(res.headers['content-length'] ?? bytes ?? 0);
+      let seen = resumed ? start : 0;
       let lastPct = -10;
-      const out = createWriteStream(part);
+      const out = createWriteStream(part, { flags: resumed ? 'a' : 'w' });
       res.on('data', chunk => {
         seen += chunk.length;
         const pct = total ? Math.floor((seen / total) * 100) : 0;

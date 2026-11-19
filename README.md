@@ -7,6 +7,7 @@
 - ✋ **手势模式**（练习页右上角开关，为闭眼练习设计）：单击/连击 N 次 = 第 N 个选项（每击一声滴答便于计数）、**划直线 = 下一题**、**长按 = 退出手势模式**、画圈 = 重播；答错后**画两圈 = 语音播报答案名**（"You chose X. The answer was Y."，浏览器内置语音引擎，零依赖、不联网）；开启后除开关外**所有控件锁定**（含返回、Options、键盘快捷键），答错还会自动连播「你的选择 + 正确答案」两音。仅对选择题且当前选项 ≤8 个的练习开放
 - 🎙 **语音作答（选择题）**：练习页的 🎙 开关打开后**持续监听**，不用按住、也不用每题重新开——说选项名（"perfect fifth"、"major first inversion"、"C sharp"、"re"）或序号（"five" / "fifth"、"option three" / "option third"）直接作答；单词若同时是选项名的一部分（如度数练习的 "three" 指 Mi），按位置作答请说 "option three"，`replay` / `next` / `names` / `stop listening` 执行对应动作；关掉开关或**连续无识别成功超过设定时长**（默认 10 分钟，设置里可调 1–60）才停止。安卓端用内置 Vosk 模型**离线**识别，网页端用浏览器的语音识别（需要网络）
 - ↕️ 答案按钮固定按乐理顺序排列（音程按半音升序、音级升序、罗马数字 I–vi…），与选项的点击顺序无关
+- 🔁 **答错后可以试听每个选项**：点任意选项、说它的名字、在手势模式下点 N 次、或按对应数字键，都会播放该选项的声音；原来的对比按钮仍在
 
 准确、可维护的乐理（music theory）数据、音频（audio）与判分（grading）优先于花哨 UI。
 
@@ -90,7 +91,7 @@ npm run android:en:release          # 英文 release 包（未签名）
 npm run android:icons               # 改过 assets/icon.svg 后重新生成启动图标（需 Pillow）
 ```
 
-每个 APK **只带一种语言的语音模型**（约 40 MB），启动时以 `?lang=zh|en` 锁定界面与识别语言；想要两种语言可切换，用网页版或另建一个包含双模型的构建。
+每个 APK **只带一种语言的语音模型**（约 40 MB），启动时以 `?lang=zh|en` 锁定界面、朗读与识别语言；默认构建为中文。想要两种语言可切换，用网页版或另建双模型构建。
 
 - 需要 JDK 17+ 与 Android SDK（`ANDROID_HOME`）；Gradle 由 wrapper 首次运行时下载。最低 Android 8.0（API 26），WebView 建议 Chrome 80+。
 - **体积约 51 MB**（arm64）：其中 ~40 MB 是离线语音模型，首次启动解压到应用私有目录（1–2 秒，带 "Preparing offline voice…"）。模型不提交进仓库，`npm run android` 首次构建会自动下载（`npm run android:model` 可单独执行）。

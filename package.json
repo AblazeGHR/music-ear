@@ -12,6 +12,7 @@
     "android:release": "node scripts/build-android.mjs --task=assembleRelease",
     "android:en:release": "node scripts/build-android.mjs --task=assembleRelease --lang=en",
     "android:icons": "E:/software/miniforge/python.exe scripts/make-icons.py",
-    "android:model": "node scripts/fetch-asr-model.mjs"
+    "android:model": "node scripts/fetch-asr-model.mjs",
+    "i18n": "node scripts/build-i18n.mjs"
   }
 }

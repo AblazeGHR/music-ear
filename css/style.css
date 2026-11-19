@@ -388,6 +388,9 @@ button:focus-visible, a:focus-visible, select:focus-visible {
 }
 .opt.bad .opt-label { color: var(--bad); }
 .opt.dim { opacity: 0.42; }
+/* After a miss every option is a preview button — keep it visibly clickable. */
+.opt.audition { cursor: pointer; opacity: 0.62; }
+.opt.audition:hover { border-color: var(--accent); opacity: 0.85; }
 
 .s-feedback { margin-top: 0.9rem; min-height: 30px; }
 .fb {

@@ -8,6 +8,7 @@
 // decided by voice-intent.js, and what an answer *does* stays in session.js.
 
 import { parseIntent, grammarPhrases } from './voice-intent.js';
+import { language } from './i18n.js';
 
 const NativeASR = () => (typeof window !== 'undefined' ? window.AndroidASR : null);
 const WebSpeech = () => (typeof window !== 'undefined'
@@ -109,12 +110,17 @@ export function createVoiceController({ getCtx, getIdleMinutes, onAnswer, onComm
 
   function startListening() {
     if (!on || holds > 0) return;
-    const ctx = getCtx();
-    if (!ctx) return;
+    const base = getCtx();
+    if (!base) return;
+    const ctx = { ...base, language: language() };
     if (backend === 'native') {
       bindNative();
       try {
-        NativeASR().start(JSON.stringify(grammarPhrases(ctx)));
+        const phrases = grammarPhrases(ctx);
+        // '' (not null) so native pending-start state survives the permission
+        // prompt and model load; SpeechBridge treats an empty string as
+        // "no grammar".
+        NativeASR().start(phrases.length ? JSON.stringify(phrases) : '');
       } catch {
         emitState('error', 'audio');
       }
@@ -184,7 +190,7 @@ export function createVoiceController({ getCtx, getIdleMinutes, onAnswer, onComm
     if (!Ctor) return;
     const r = new Ctor();
     recon = r;
-    r.lang = 'en-US';
+    r.lang = language() === 'zh' ? 'zh-CN' : 'en-US';
     r.continuous = true;
     r.interimResults = true;
     r.maxAlternatives = 1;
@@ -263,8 +269,9 @@ export function createVoiceController({ getCtx, getIdleMinutes, onAnswer, onComm
     if (lastFinal.text === clean.toLowerCase() && now - lastFinal.at < 1200) return;
     lastFinal = { text: clean.toLowerCase(), at: now };
 
-    const ctx = getCtx();
-    if (!ctx) return;
+    const base = getCtx();
+    if (!base) return;
+    const ctx = { ...base, language: language() };
     lastHeard = clean;
     const intent = parseIntent(clean, ctx);
     onHeard?.(clean, intent);

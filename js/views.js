@@ -7,7 +7,7 @@ import { MODULES, moduleById } from './curriculum.js';
 import { INTERVALS, CHORDS, SCALES, DEGREES, pitchClassName } from './theory.js';
 import { track } from './analytics.js';
 import { APP_VERSION, REPO_URL } from './config.js';
-import { language, isLanguageFixed } from './i18n.js';
+import { language, isLanguageFixed, theoryName } from './i18n.js';
 
 // ── shared chrome ─────────────────────────────────────────────────────────────
 
@@ -72,13 +72,15 @@ export function renderStats(root, focusModuleId = null) {
   const practiced = MODULES.filter(m => State.moduleStats(m.id).a > 0).length;
   const confusions = State.topConfusions(8);
 
-  const confName = (moduleId, id) =>
-    moduleId === 'intervals' ? INTERVALS[id]?.name
-    : moduleId === 'chords' ? CHORDS[id]?.name
-    : moduleId === 'scales' ? SCALES[id]?.name
-    : moduleId === 'degrees' ? DEGREES[id]?.solfege ?? id
-    : moduleId === 'absolute' ? pitchClassName(id)
-    : id;
+  const confName = (moduleId, id) => {
+    const base = moduleId === 'intervals' ? INTERVALS[id]?.name
+      : moduleId === 'chords' ? CHORDS[id]?.name
+      : moduleId === 'scales' ? SCALES[id]?.name
+      : moduleId === 'degrees' ? DEGREES[id]?.solfege ?? id
+      : moduleId === 'absolute' ? pitchClassName(id)
+      : id;
+    return theoryName(moduleId, id, base);
+  };
 
   function comparePlay(moduleId, id) {
     Audio.unlock();
@@ -379,9 +381,9 @@ export function renderSettings(root) {
 export function renderGuide(root) {
   const songRows = Object.entries(INTERVALS)
     .filter(([, iv]) => iv.songs?.asc || iv.songs?.desc)
-    .map(([, iv]) =>
+    .map(([id, iv]) =>
       h('tr', {},
-        h('td', {}, h('strong', {}, iv.name)),
+        h('td', {}, h('strong', { 'data-no-i18n': '' }, theoryName('intervals', id, iv.name))),
         h('td', {}, iv.songs.asc || '—'),
         h('td', {}, iv.songs.desc || '—')));
 

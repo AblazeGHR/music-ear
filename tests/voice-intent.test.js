@@ -177,3 +177,100 @@ test('grammar phrases are ASCII and include the commands', () => {
   assert.ok(phrases.includes('major seventh first inversion'));
   assert.ok(phrases.every(p => /^[\x20-\x7e]+$/.test(p)));
 });
+
+// ── Chinese ──────────────────────────────────────────────────────────────────
+
+const zh = (moduleId, ids = []) => ({
+  moduleId,
+  options: ids.map(id => ({ id })),
+  language: 'zh',
+});
+
+test('Chinese pitch answers', () => {
+  const c = zh('pitch', POOLS.pitch);
+  assert.equal(parseIntent('更高', c).id, 'up');
+  assert.equal(parseIntent('低一点', c).id, 'down');
+  assert.equal(parseIntent('一样', c).id, 'same');
+});
+
+test('Chinese interval names, with and without extra words', () => {
+  const c = zh('intervals', POOLS.intervals);
+  assert.equal(parseIntent('纯五度', c).id, 'P5');
+  assert.equal(parseIntent('我觉得是纯五度', c).id, 'P5');
+  assert.equal(parseIntent('小三度', c).id, 'm3');
+  assert.equal(parseIntent('三全音', c).id, 'TT');
+  assert.equal(parseIntent('八度', c).id, 'P8');
+  assert.equal(parseIntent('五度', c).id, 'P5');
+});
+
+test('Chinese chord names and inversions', () => {
+  const c = zh('chords', POOLS.chords);
+  assert.equal(parseIntent('大三和弦', c).id, 'maj');
+  assert.equal(parseIntent('大三和弦第一转位', c).id, 'maj_1');
+  assert.equal(parseIntent('第一转位大三和弦', c).id, 'maj_1');
+  assert.equal(parseIntent('属七和弦第一转位', c).id, 'dom7_1');
+  assert.equal(parseIntent('半减七和弦第一转位', c).id, 'm7b5_1');
+});
+
+test('Chinese scale names', () => {
+  const c = zh('scales', POOLS.scales);
+  assert.equal(parseIntent('自然小调', c).id, 'natmin');
+  assert.equal(parseIntent('大调', c).id, 'major');
+  assert.equal(parseIntent('多利亚', c).id, 'dorian');
+  assert.equal(parseIntent('全音音阶', c).id, 'wholetone');
+});
+
+test('Chinese degrees: solfège and numbered degrees', () => {
+  const c = zh('degrees', POOLS.degrees);
+  assert.equal(parseIntent('哆', c).id, 'do');
+  assert.equal(parseIntent('来', c).id, 're');
+  assert.equal(parseIntent('索', c).id, 'sol');
+  assert.equal(parseIntent('三级', c).id, 'mi');
+  assert.equal(parseIntent('降三级', c).id, 'me');
+  assert.equal(parseIntent('升四级', c).id, 'fi');
+});
+
+test('Chinese absolute pitch: 升/降 spellings', () => {
+  const c = zh('absolute', POOLS.absolute);
+  assert.equal(parseIntent('升c', c).id, 1);
+  assert.equal(parseIntent('降e', c).id, 3);
+  assert.equal(parseIntent('降b', c).id, 10);
+  assert.equal(parseIntent('a', c).id, 9);
+});
+
+test('Chinese numbers pick buttons, explicit forms first', () => {
+  const c = zh('intervals', POOLS.intervals);
+  assert.equal(parseIntent('三', c).index, 3);
+  assert.equal(parseIntent('第三个', c).index, 3);
+  assert.equal(parseIntent('选项三', c).index, 3);
+  assert.equal(parseIntent('请选三号', c).index, 3);
+  assert.equal(parseIntent('三十三', zh('chords', POOLS.chords)).index, 33);
+});
+
+test('Chinese commands', () => {
+  const c = zh('intervals', POOLS.intervals);
+  assert.equal(parseIntent('重播', c).name, 'replay');
+  assert.equal(parseIntent('请再放一遍', c).name, 'replay');
+  assert.equal(parseIntent('下一题', c).name, 'next');
+  assert.equal(parseIntent('跳过', c).name, 'next');
+  assert.equal(parseIntent('报答案', c).name, 'names');
+  assert.equal(parseIntent('关闭语音', c).name, 'stop');
+});
+
+test('Chinese ambiguity is refused', () => {
+  const c = zh('intervals', ['m3', 'M3']);
+  const r = parseIntent('三度', c);
+  assert.equal(r.type, 'none');
+  assert.equal(r.reason, 'ambiguous');
+});
+
+test('Chinese one-character answers do not swallow every name', () => {
+  const c = zh('degrees', POOLS.degrees);
+  // "三" is a number, not the 三 inside 降三级/三星…
+  assert.equal(parseIntent('三', c).via, 'index');
+  assert.equal(parseIntent('香蕉', c).type, 'none');
+});
+
+test('Chinese builds no recogniser grammar (no word list in the model)', () => {
+  assert.deepEqual(grammarPhrases(zh('chords', POOLS.chords)), []);
+});

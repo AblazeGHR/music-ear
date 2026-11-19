@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.10.0 — 2026-11-20
+
+- 🇨🇳 **Chinese interface and Chinese voice answering.** Settings → Language switches the whole app (UI, theory names, spoken names) between English and 简体中文; the choice is stored. Lean Android builds fix the language with `?lang=` and hide the switch
+- Chinese theory names are looked up by answer id, so "Major" as a chord and "Major" as a scale no longer collide (大三和弦 vs 大调); spoken names follow the same table (纯五度、属七和弦，第一转位、升C、降三级)
+- **Chinese speech input**: say option names (纯五度、大三和弦第一转位、自然小调、降三级), numbers (三、第三个、选项三、三号), or commands (重播、下一题、报答案、关闭语音). Matching works on a whitespace-free string; the zh model ships no word list, so the recogniser runs with its language model instead of a grammar
+- 🔊 **After a miss, every option becomes a preview button** — tap it to hear it, say its name to hear it, tap it N times in gesture mode, or press its number key. The comparison buttons remain
+- Chinese TTS switches the platform voice to zh-CN and reads the localised answer names; the phone never needs a network for any of this
+
 ## 0.9.2 — 2026-11-19
 
 - ✋🎙 **Gesture mode and voice mode can be on at the same time.** Enabling one used to switch the other off, which looked like the gesture button had been removed. Both switches now stay on; whichever input produces an answer first wins, and the other is ignored by the answered guard
