@@ -29,6 +29,7 @@ public class TtsBridge {
     private final WebView web;
     private TextToSpeech engine;
     private volatile boolean ready;
+    private volatile String langTag = "en-US";
     private String pendingText;
     private float pendingVolume = 1f;
 
@@ -40,7 +41,7 @@ public class TtsBridge {
                 Log.w(TAG, "no speech engine available");
                 return;
             }
-            int lang = engine.setLanguage(Locale.US);
+            int lang = engine.setLanguage(Locale.forLanguageTag(langTag));
             if (lang == TextToSpeech.LANG_MISSING_DATA || lang == TextToSpeech.LANG_NOT_SUPPORTED) {
                 Log.w(TAG, "en-US voice not installed");
             }
@@ -59,6 +60,16 @@ public class TtsBridge {
                 speakNow(pendingText, pendingVolume);
                 pendingText = null;
             }
+        });
+    }
+
+    /** Switch the engine between the two shipped languages. */
+    @JavascriptInterface
+    public void setLanguage(String lang) {
+        final String tag = "zh".equals(lang) ? "zh-CN" : "en-US";
+        main.post(() -> {
+            langTag = tag;
+            if (ready && engine != null) engine.setLanguage(Locale.forLanguageTag(tag));
         });
     }
 

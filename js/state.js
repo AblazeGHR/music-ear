@@ -20,6 +20,7 @@ const DEFAULT_SETTINGS = {
   melodyTempo: 0.55,         // seconds per note
   tapWindowMs: 350,          // gesture mode: wait for another tap before answering
   voiceTimeoutMin: 10,       // voice mode: stop after this long without a recognised answer
+  language: 'en',            // 'en' | 'zh' — interface, speech and recognition
   exercises: {},             // moduleId -> question-config overrides (see moduleConfig)
 };
 

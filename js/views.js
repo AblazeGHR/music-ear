@@ -7,6 +7,7 @@ import { MODULES, moduleById } from './curriculum.js';
 import { INTERVALS, CHORDS, SCALES, DEGREES, pitchClassName } from './theory.js';
 import { track } from './analytics.js';
 import { APP_VERSION, REPO_URL } from './config.js';
+import { language, isLanguageFixed } from './i18n.js';
 
 // ── shared chrome ─────────────────────────────────────────────────────────────
 
@@ -295,6 +296,12 @@ export function renderSettings(root) {
     topbar('settings'),
     h('h1', {}, 'Settings'),
     h('p', { class: 'muted' }, 'Per-exercise question pools live in each exercise’s Options panel.'),
+    isLanguageFixed() ? null : row('Language', 'Interface and answer language.',
+      h('div', { 'data-no-i18n': '' },
+        select(language(), [
+          ['en', 'English'],
+          ['zh', '简体中文'],
+        ], v => { s.language = v; State.save(); location.reload(); }))),
 
     row('Volume', 'Output level for all playback.',
       h('input', {

@@ -7,6 +7,7 @@ import { renderPractice } from './session.js';
 import { MODULES } from './curriculum.js';
 import { initAnalytics, track } from './analytics.js';
 import { mountFeedback, setFeedbackVisible } from './feedback.js';
+import { initLanguage } from './i18n.js';
 
 const app = document.getElementById('app');
 let cleanup = null;
@@ -35,6 +36,7 @@ function route() {
 }
 
 State.load();
+initLanguage(State.state.settings.language);
 Audio.setVolume(State.state.settings.volume);
 initAnalytics();
 track('app_open', { total_answers: State.state.totals.a });
