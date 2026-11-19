@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.11.0 — 2026-11-20
+
+- 🌙 **Lock the screen and keep practising.** Turning voice mode on now starts a microphone foreground service with a partial wake lock; while it runs the activity does not pause the WebView, so questions, recognition and spoken feedback continue with the display off. A low-priority notification (localised) marks the session and returns to the app when tapped
+- The service exists exactly as long as the voice switch: turning voice off, the idle timeout, a fatal recognition error, leaving the practice screen or swiping the app away all stop it and release the wake lock
+- Honest limits: aggressive OEM battery savers and Android Doze can still throttle a long screen-off session, and the automatic advance timer may be delayed; voice commands (next/replay) go through native callbacks and keep working. Needs a real-device pass
+
 ## 0.10.0 — 2026-11-20
 
 - 🇨🇳 **Chinese interface and Chinese voice answering.** Settings → Language switches the whole app (UI, theory names, spoken names) between English and 简体中文; the choice is stored. Lean Android builds fix the language with `?lang=` and hide the switch

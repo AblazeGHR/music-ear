@@ -8,6 +8,14 @@
          on, and audio never leaves the device (on-device Vosk model). -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
+    <!-- Screen-off practice: a microphone foreground service + partial wake
+         lock keep the recorder and WebView alive while the screen is locked. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
     <application
         android:allowBackup="true"
         android:enableOnBackInvokedCallback="false"
@@ -21,6 +29,12 @@
         <meta-data
             android:name="app.lang"
             android:value="${appLang}" />
+
+        <service
+            android:name=".PracticeService"
+            android:exported="false"
+            android:foregroundServiceType="microphone|mediaPlayback"
+            android:stopWithTask="true" />
 
         <activity
             android:name=".MainActivity"

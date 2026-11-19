@@ -42,6 +42,14 @@ export function createVoiceController({ getCtx, getIdleMinutes, onAnswer, onComm
 
   // ── lifecycle ──────────────────────────────────────────────────────────────
 
+  const Practice = () => (typeof window !== 'undefined' ? window.AndroidPractice : null);
+
+  function setScreenOffPractice(active) {
+    const bridge = Practice();
+    if (!bridge) return;
+    try { (active ? bridge.start : bridge.stop).call(bridge); } catch { /* web build */ }
+  }
+
   function enable() {
     if (!backend) return false;
     on = true;
@@ -57,6 +65,7 @@ export function createVoiceController({ getCtx, getIdleMinutes, onAnswer, onComm
 
   function disable() {
     on = false;
+    setScreenOffPractice(false);
     holds = 0;
     clearRestart();
     clearTimeout(idleTimer);
@@ -96,6 +105,7 @@ export function createVoiceController({ getCtx, getIdleMinutes, onAnswer, onComm
 
   function dispose() {
     on = false;
+    setScreenOffPractice(false);
     holds = 0;
     clearRestart();
     clearTimeout(speechTimer);
@@ -162,7 +172,10 @@ export function createVoiceController({ getCtx, getIdleMinutes, onAnswer, onComm
     if (msg.type === 'state') {
       if (msg.value === 'preparing') emitState('preparing');
       else if (msg.value === 'ready') emitState(holds > 0 ? 'paused' : 'ready');
-      else if (msg.value === 'listening') emitState('listening');
+      else if (msg.value === 'listening') {
+        setScreenOffPractice(true);
+        emitState('listening');
+      }
       else if (msg.value === 'idle') emitState(holds > 0 ? 'paused' : 'idle');
       return;
     }

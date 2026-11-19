@@ -48,7 +48,9 @@ public class MainActivity extends Activity implements SpeechBridge.Host {
     private WebView web;
     private TtsBridge tts;
     private SpeechBridge speech;
+    private PracticeBridge practice;
     private String appLang = "en";
+    private boolean webPaused;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -88,6 +90,9 @@ public class MainActivity extends Activity implements SpeechBridge.Host {
         speech = new SpeechBridge(this, web, this, appLang);
         web.addJavascriptInterface(speech, "AndroidASR");
 
+        practice = new PracticeBridge(this);
+        web.addJavascriptInterface(practice, "AndroidPractice");
+
         FrameLayout root = new FrameLayout(this);
         root.setBackgroundColor(BG);
         root.addView(web, new FrameLayout.LayoutParams(
@@ -119,20 +124,29 @@ public class MainActivity extends Activity implements SpeechBridge.Host {
 
     @Override
     protected void onPause() {
-        web.onPause();
+        // With a voice session running the screen may be locked on purpose;
+        // pausing the WebView here would freeze timers and question playback.
+        if (!PracticeBridge.isActive()) {
+            web.onPause();
+            webPaused = true;
+        }
         super.onPause();
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        web.onResume();
+        if (webPaused) {
+            web.onResume();
+            webPaused = false;
+        }
     }
 
     @Override
     protected void onDestroy() {
         web.removeJavascriptInterface("AndroidTTS");
         web.removeJavascriptInterface("AndroidASR");
+        web.removeJavascriptInterface("AndroidPractice");
         if (speech != null) speech.shutdown();
         if (tts != null) tts.shutdown();
         web.destroy();
