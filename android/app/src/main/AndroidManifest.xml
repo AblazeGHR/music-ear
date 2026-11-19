@@ -18,6 +18,10 @@
         android:theme="@style/AppTheme"
         android:usesCleartextTraffic="false">
 
+        <meta-data
+            android:name="app.lang"
+            android:value="${appLang}" />
+
         <activity
             android:name=".MainActivity"
             android:configChanges="keyboardHidden|orientation|screenLayout|screenSize|smallestScreenSize|uiMode"

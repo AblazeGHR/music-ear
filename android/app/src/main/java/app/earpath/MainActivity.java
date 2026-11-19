@@ -106,7 +106,7 @@ public class MainActivity extends Activity implements SpeechBridge.Host {
         }
 
         if (savedInstanceState != null) web.restoreState(savedInstanceState);
-        else web.loadUrl(START_URL);
+        else web.loadUrl(startUrl());
     }
 
     @Override
@@ -156,6 +156,17 @@ public class MainActivity extends Activity implements SpeechBridge.Host {
             speech.onPermissionResult(results.length > 0
                     && results[0] == PackageManager.PERMISSION_GRANTED);
         }
+    }
+
+    /** The build's language is fixed in the manifest; the page reads ?lang=. */
+    private String startUrl() {
+        String lang = "";
+        try {
+            ApplicationInfo info = getPackageManager()
+                    .getApplicationInfo(getPackageName(), PackageManager.GET_META_DATA);
+            lang = info.metaData == null ? "" : info.metaData.getString("app.lang", "");
+        } catch (Exception ignored) { }
+        return lang.isEmpty() ? START_URL : START_URL + "?lang=" + lang;
     }
 
     /** Back walks the app's own hash history before leaving the app. */

@@ -111,7 +111,8 @@ function runSession(root, cfg) {
   const unbindGestures = bindPointerSurface(overlay, recognizer);
 
   function setGesture(on) {
-    if (on && voiceOn) setVoice(false);
+    // Gesture and voice are independent inputs: both may be on at once, and
+    // whichever recognises first answers (the answer guard drops the second).
     gestureOn = on;
     shell.classList.toggle('gesture-on', on);
     gestureBtn.classList.toggle('on', on);
@@ -124,7 +125,6 @@ function runSession(root, cfg) {
   function setVoice(on) {
     if (on && !voiceSupported()) return;
     if (on && (!q || q.kind !== 'choice')) return;
-    if (on && gestureOn) setGesture(false);
     voiceOn = on;
     shell.classList.toggle('voice-on', on);
     voiceBtn.classList.toggle('on', on);
