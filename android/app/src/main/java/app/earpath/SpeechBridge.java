@@ -25,11 +25,13 @@ import java.io.InputStream;
 import java.io.OutputStream;
 
 /**
- * On-device speech recognition (Vosk small en-US). The model ships in the APK,
- * so nothing the microphone hears leaves the phone and no network is needed.
+ * On-device speech recognition (Vosk small models). The APK may ship both the
+ * English and Chinese models (bilingual debug builds); prepare(lang) /
+ * start(grammarJson, lang) select which one is loaded, so switching language in
+ * the UI swaps models without reinstalling.
  *
- * JS sees `window.AndroidASR` with prepare() / start(grammarJson) / stop();
- * results come back through `window.__asr.event({...})`.
+ * JS sees `window.AndroidASR` with prepare(lang) / start(grammarJson, lang) /
+ * stop(); results come back through `window.__asr.event({...})`.
  */
 public class SpeechBridge {
 
@@ -46,55 +48,85 @@ public class SpeechBridge {
     private final Context context;
     private final WebView web;
     private final Host host;
-    private final String language;
     private final Handler main = new Handler(Looper.getMainLooper());
 
     private volatile Model model;
+    private volatile String loadedLang;
     private Thread worker;
     private volatile boolean running;
     private volatile AudioRecord audio;
     private volatile String lastPartial = "";
     private boolean preparing;
+    private String preparingLang;
+    private int loadSeq;
     private String pendingGrammar;
+    private String pendingLang;
 
-    SpeechBridge(Context context, WebView web, Host host, String language) {
+    SpeechBridge(Context context, WebView web, Host host) {
         this.context = context.getApplicationContext();
         this.web = web;
         this.host = host;
-        this.language = language == null || language.isEmpty() ? "en" : language;
     }
 
-    /** Load the model in the background; safe to call repeatedly. */
+    private static String normalizeLang(String lang) {
+        return "zh".equals(lang) ? "zh" : "en";
+    }
+
+    /** Load one language's model in the background; safe to call repeatedly. */
     @JavascriptInterface
-    public void prepare() {
-        if (model != null) { emitState("ready"); return; }
-        if (preparing) return;
+    public void prepare(String lang) {
+        final String target = normalizeLang(lang);
+        if (model != null && target.equals(loadedLang)) {
+            emitState("ready");
+            return;
+        }
+        if (preparing && target.equals(preparingLang)) return;
+
         preparing = true;
+        preparingLang = target;
+        final int seq = ++loadSeq;
         emitState("preparing");
 
         new Thread(() -> {
             try {
                 LibVosk.setLogLevel(LogLevel.WARNINGS);
-                // Keyed by language: installing the English APK over the Chinese
-                // one (same applicationId) must not reuse the old model.
-                File dir = new File(context.getFilesDir(), "asr-" + language + "-" + MODEL_VERSION);
+                stopInternal();
+
+                // Assets are keyed by language; the unpacked copy is too, so a
+                // Chinese session can never reuse the English model.
+                File dir = new File(context.getFilesDir(), "asr-" + target + "-" + MODEL_VERSION);
                 File marker = new File(dir, ".ready");
                 if (!marker.exists()) {
                     Log.d(TAG, "unpacking model into " + dir);
                     if (dir.exists()) deleteTree(dir);
                     dir.mkdirs();
-                    copyAsset(MODEL_DIR, dir);
+                    copyAsset(MODEL_DIR + "/" + target, dir);
                     if (!marker.createNewFile()) throw new IOException("cannot write model marker");
                 }
+
                 Model loaded = new Model(dir.getAbsolutePath());
-                synchronized (this) { model = loaded; }
+                synchronized (this) {
+                    if (seq != loadSeq) {
+                        loaded.close();
+                        return;
+                    }
+                    if (model != null) model.close();
+                    model = loaded;
+                    loadedLang = target;
+                }
                 preparing = false;
+                preparingLang = null;
                 emitState("ready");
+
                 String g = pendingGrammar;
+                String l = pendingLang;
                 pendingGrammar = null;
-                if (g != null) start(g);
+                pendingLang = null;
+                if (g != null) start(g, l);
             } catch (Throwable t) {
+                if (seq != loadSeq) return;
                 preparing = false;
+                preparingLang = null;
                 Log.e(TAG, "model failed", t);
                 emitError("model", String.valueOf(t.getMessage()));
             }
@@ -102,16 +134,19 @@ public class SpeechBridge {
     }
 
     @JavascriptInterface
-    public void start(String grammarJson) {
+    public void start(String grammarJson, String lang) {
+        final String target = normalizeLang(lang);
         if (host == null || !host.hasMicPermission()) {
             pendingGrammar = grammarJson;
+            pendingLang = target;
             emitError("permission", "microphone permission not granted");
             main.post(() -> host.requestMicPermission());
             return;
         }
-        if (model == null) {
+        if (model == null || !target.equals(loadedLang)) {
             pendingGrammar = grammarJson;
-            prepare();
+            pendingLang = target;
+            prepare(target);
             return;
         }
 
@@ -132,18 +167,22 @@ public class SpeechBridge {
     void onPermissionResult(boolean granted) {
         if (!granted) {
             pendingGrammar = null;
+            pendingLang = null;
             emitError("permission", "microphone permission denied");
             return;
         }
         String g = pendingGrammar;
+        String l = pendingLang;
         pendingGrammar = null;
-        if (g != null) start(g);
+        pendingLang = null;
+        if (g != null) start(g, l);
     }
 
     void shutdown() {
         stopInternal();
         synchronized (this) {
             if (model != null) { model.close(); model = null; }
+            loadedLang = null;
         }
     }
 

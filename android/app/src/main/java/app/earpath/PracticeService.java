@@ -152,13 +152,7 @@ public class PracticeService extends Service {
     }
 
     private boolean isChinese() {
-        try {
-            ApplicationInfo info = getPackageManager()
-                    .getApplicationInfo(getPackageName(), PackageManager.GET_META_DATA);
-            return info.metaData != null && "zh".equals(info.metaData.getString("app.lang"));
-        } catch (Exception e) {
-            return false;
-        }
+        return "zh".equals(PracticeBridge.currentLang());
     }
 
     public static void start(Context context) {

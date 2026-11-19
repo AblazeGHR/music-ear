@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.12.0 — 2026-11-20
+
+- 🌐 **Debug builds are bilingual again.** `npm run android` now bundles both the English and Chinese Vosk models (~96 MB) and starts without `?lang=`, so Settings → Language switches the interface, speech and recognition at runtime. The native bridge loads/unpacks models per language on demand (`prepare(lang)`, `start(grammar, lang)`), and the screen-off notification follows the chosen language
+- **Only release builds are lean.** `npm run android:release` / `npm run android:en:release` still pack one model (~54 MB) and lock the language with `?lang=`; the switch is hidden there. Debug builds no longer have a single-language variant
+- Each model keeps its own unpack directory (`asr-en-v1`, `asr-zh-v1`), so switching back and forth does not re-extract on every toggle
+
 ## 0.11.0 — 2026-11-20
 
 - 🌙 **Lock the screen and keep practising.** Turning voice mode on now starts a microphone foreground service with a partial wake lock; while it runs the activity does not pause the WebView, so questions, recognition and spoken feedback continue with the display off. A low-priority notification (localised) marks the session and returns to the app when tapped

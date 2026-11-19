@@ -47,7 +47,10 @@ export function createVoiceController({ getCtx, getIdleMinutes, onAnswer, onComm
   function setScreenOffPractice(active) {
     const bridge = Practice();
     if (!bridge) return;
-    try { (active ? bridge.start : bridge.stop).call(bridge); } catch { /* web build */ }
+    try {
+      if (active) bridge.start(language());
+      else bridge.stop();
+    } catch { /* web build */ }
   }
 
   function enable() {
@@ -56,7 +59,7 @@ export function createVoiceController({ getCtx, getIdleMinutes, onAnswer, onComm
     networkErrors = 0;
     if (backend === 'native') {
       bindNative();
-      try { NativeASR().prepare(); } catch { /* start() will retry */ }
+      try { NativeASR().prepare(language()); } catch { /* start() will retry */ }
     }
     startListening();
     armIdle();
@@ -130,7 +133,7 @@ export function createVoiceController({ getCtx, getIdleMinutes, onAnswer, onComm
         // '' (not null) so native pending-start state survives the permission
         // prompt and model load; SpeechBridge treats an empty string as
         // "no grammar".
-        NativeASR().start(phrases.length ? JSON.stringify(phrases) : '');
+        NativeASR().start(phrases.length ? JSON.stringify(phrases) : '', language());
       } catch {
         emitState('error', 'audio');
       }

@@ -84,17 +84,16 @@ npm run deploy    # 需要环境变量 CLOUDFLARE_API_TOKEN
 同一份静态站点可以打包成离线安卓应用。`android/` 是一个原生壳（WebView + 内置静态资源 + 系统 TTS + 内置 Vosk 离线识别），构建时把运行时文件复制进 APK，装上即可用、飞行模式下也能完整练习。
 
 ```bash
-npm run android                     # 中文 debug APK（默认，内置中文模型）
-npm run android:en                  # 英文 debug APK（内置英文模型）
-npm run android:release             # 中文 release 包（未签名，需自备 keystore）
-npm run android:en:release          # 英文 release 包（未签名）
+npm run android                     # 双语 debug APK（中英两个模型，可切换，约 96 MB）
+npm run android:release             # 中文 release 包（精简，单模型，未签名）
+npm run android:en:release          # 英文 release 包（精简，单模型，未签名）
 npm run android:icons               # 改过 assets/icon.svg 后重新生成启动图标（需 Pillow）
 ```
 
-每个 APK **只带一种语言的语音模型**（约 40 MB），启动时以 `?lang=zh|en` 锁定界面、朗读与识别语言；默认构建为中文。想要两种语言可切换，用网页版或另建双模型构建。
+**debug 默认双语**：两个 Vosk 模型都打进 APK，启动不带 `?lang=`，设置里可随时切换界面、朗读和识别语言；切换时原生桥按需加载对应模型（首次各解压一次，之后复用）。**只有 release 走精简版**：单模型、`?lang=` 锁定、隐藏语言切换。
 
 - 需要 JDK 17+ 与 Android SDK（`ANDROID_HOME`）；Gradle 由 wrapper 首次运行时下载。最低 Android 8.0（API 26），WebView 建议 Chrome 80+。
-- **体积约 51 MB**（arm64）：其中 ~40 MB 是离线语音模型，首次启动解压到应用私有目录（1–2 秒，带 "Preparing offline voice…"）。模型不提交进仓库，`npm run android` 首次构建会自动下载（`npm run android:model` 可单独执行）。
+- **体积**：双语 debug 约 96 MB（两个模型）；单语言 release 约 54 MB（一个模型）。模型不提交进仓库，`npm run android` 首次构建会自动下载（`npm run android:model` 可单独执行）；每种语言首次启用语音时解压到私有目录（1–2 秒）。
 - **语音完全离线**：Vosk small en-US + 每题动态 grammar（只允许当前选项名与四个命令），麦克风音频不出设备；不再依赖 Google 语音服务。
 - 安卓 WebView 没有可用的 Web Speech 语音，壳里通过 `AndroidTTS` 桥接系统 TTS，`js/speech.js` 检测到桥接时优先使用；壳内不注册 Service Worker（文件已在 APK 里）。
 - 字体（Outfit woff2）随包内置，WebView 对一切非本地请求返回 403，网页端也不再请求 Google Fonts。

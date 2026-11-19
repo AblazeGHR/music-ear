@@ -87,7 +87,7 @@ public class MainActivity extends Activity implements SpeechBridge.Host {
         web.addJavascriptInterface(tts, "AndroidTTS");
 
         appLang = readAppLanguage();
-        speech = new SpeechBridge(this, web, this, appLang);
+        speech = new SpeechBridge(this, web, this);
         web.addJavascriptInterface(speech, "AndroidASR");
 
         practice = new PracticeBridge(this);
@@ -187,6 +187,7 @@ public class MainActivity extends Activity implements SpeechBridge.Host {
 
     /** The build's language is fixed in the manifest; the page reads ?lang=. */
     private String startUrl() {
+        if ("multi".equals(appLang)) return START_URL;
         return START_URL + "?lang=" + appLang;
     }
 

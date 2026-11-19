@@ -15,6 +15,7 @@ public class PracticeBridge {
 
     private static final int NOTIFICATION_REQUEST = 72;
     private static volatile boolean active;
+    private static volatile String currentLang = "en";
     private final Activity activity;
 
     PracticeBridge(Activity activity) {
@@ -23,9 +24,12 @@ public class PracticeBridge {
 
     static boolean isActive() { return active; }
     static void setActive(boolean value) { active = value; }
+    static String currentLang() { return currentLang; }
 
     @JavascriptInterface
-    public void start() {
+    public void start(String lang) {
+        if ("zh".equals(lang)) currentLang = "zh";
+        else if ("en".equals(lang)) currentLang = "en";
         // The page calls this when recognition reports "listening", which is
         // also when RECORD_AUDIO is known to be granted; a microphone FGS
         // without it would throw on Android 14.
