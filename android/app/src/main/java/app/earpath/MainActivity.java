@@ -168,9 +168,11 @@ public class MainActivity extends Activity implements SpeechBridge.Host {
     @Override
     public void onRequestPermissionsResult(int code, String[] permissions, int[] results) {
         super.onRequestPermissionsResult(code, permissions, results);
-        if (code == MIC_REQUEST && speech != null) {
-            speech.onPermissionResult(results.length > 0
-                    && results[0] == PackageManager.PERMISSION_GRANTED);
+        if (code == MIC_REQUEST) {
+            boolean granted = results.length > 0
+                    && results[0] == PackageManager.PERMISSION_GRANTED;
+            if (speech != null) speech.onPermissionResult(granted);
+            if (granted && practice != null) practice.onMicGranted();
         }
     }
 

@@ -57,6 +57,9 @@ export function createVoiceController({ getCtx, getIdleMinutes, onAnswer, onComm
     if (!backend) return false;
     on = true;
     networkErrors = 0;
+    // If the mic is already granted this starts immediately; otherwise the
+    // bridge waits for the permission result (and listening retries anyway).
+    setScreenOffPractice(true);
     if (backend === 'native') {
       bindNative();
       try { NativeASR().prepare(language()); } catch { /* start() will retry */ }

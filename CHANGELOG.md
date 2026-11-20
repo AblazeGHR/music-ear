@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.12.1 — 2026-11-20
+
+- 🔧 **Screen-off practice starts earlier.** The foreground service now starts the moment voice mode is switched on when the microphone is already granted, and immediately after the permission dialog otherwise — previously it waited for recognition to report "listening", so locking the screen during model preparation could leave the service unstarted (and Android 12+ then refuses a microphone FGS started from the background)
+- Service start is idempotent and failures are caught and logged instead of leaving the app believing background mode is active; audio focus is requested only once
+
 ## 0.12.0 — 2026-11-20
 
 - 🌐 **Debug builds are bilingual again.** `npm run android` now bundles both the English and Chinese Vosk models (~96 MB) and starts without `?lang=`, so Settings → Language switches the interface, speech and recognition at runtime. The native bridge loads/unpacks models per language on demand (`prepare(lang)`, `start(grammar, lang)`), and the screen-off notification follows the chosen language

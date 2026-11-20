@@ -16,6 +16,7 @@ import android.media.AudioManager;
 import android.os.Build;
 import android.os.IBinder;
 import android.os.PowerManager;
+import android.util.Log;
 
 /**
  * Keeps a voice session alive with the screen off.
@@ -51,8 +52,24 @@ public class PracticeService extends Service {
             return START_NOT_STICKY;
         }
 
-        createChannel();
-        Notification notification = buildNotification();
+        try {
+            createChannel();
+            Notification notification = buildNotification();
+            startInForeground(notification);
+        } catch (Throwable t) {
+            Log.e("earpath-practice", "startForeground failed", t);
+            PracticeBridge.setActive(false);
+            stopSelf();
+            return START_NOT_STICKY;
+        }
+
+        running = true;
+        acquireWakeLock();
+        requestAudioFocus();
+        return START_NOT_STICKY;
+    }
+
+    private void startInForeground(Notification notification) {
         if (Build.VERSION.SDK_INT >= 30) {
             startForeground(NOTIFICATION_ID, notification,
                     ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
@@ -63,11 +80,6 @@ public class PracticeService extends Service {
         } else {
             startForeground(NOTIFICATION_ID, notification);
         }
-
-        running = true;
-        acquireWakeLock();
-        requestAudioFocus();
-        return START_NOT_STICKY;
     }
 
     @Override
@@ -132,6 +144,7 @@ public class PracticeService extends Service {
     }
 
     private void requestAudioFocus() {
+        if (focusRequest != null) return;
         audioManager = (AudioManager) getSystemService(AUDIO_SERVICE);
         AudioAttributes attrs = new AudioAttributes.Builder()
                 .setUsage(AudioAttributes.USAGE_MEDIA)
