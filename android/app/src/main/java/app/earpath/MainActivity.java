@@ -92,6 +92,7 @@ public class MainActivity extends Activity implements SpeechBridge.Host {
 
         practice = new PracticeBridge(this);
         web.addJavascriptInterface(practice, "AndroidPractice");
+        PracticeService.attachWebView(web);
 
         FrameLayout root = new FrameLayout(this);
         root.setBackgroundColor(BG);
@@ -147,6 +148,9 @@ public class MainActivity extends Activity implements SpeechBridge.Host {
         web.removeJavascriptInterface("AndroidTTS");
         web.removeJavascriptInterface("AndroidASR");
         web.removeJavascriptInterface("AndroidPractice");
+        PracticeService.detachWebView(web);
+        PracticeService.stop(this);
+        PracticeBridge.setActive(false);
         if (speech != null) speech.shutdown();
         if (tts != null) tts.shutdown();
         web.destroy();

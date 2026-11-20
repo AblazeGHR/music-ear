@@ -35,6 +35,7 @@ function runSession(root, cfg) {
   let sessionN = 0, sessionC = 0;
   let qPlays = 0;             // plays of the current question; replays may vary
   let autoTimer = null;
+  let autoAt = 0;             // wall-clock deadline, survives frozen timers
   let piano = null;
   let userSeq = [];           // sequence answers
   let userMidis = [];         // melody answers
@@ -346,6 +347,7 @@ function runSession(root, cfg) {
 
   function clearAuto() {
     if (autoTimer) { clearTimeout(autoTimer); autoTimer = null; }
+    autoAt = 0;
   }
 
   function nextQuestion() {
@@ -403,6 +405,7 @@ function runSession(root, cfg) {
     const nextBtn = h('button', { class: 'btn primary', onclick: nextQuestion }, 'Next →');
     actionsEl.append(nextBtn);
     if (result.correct && State.state.settings.autoAdvance) {
+      autoAt = Date.now() + 1100;
       autoTimer = setTimeout(nextQuestion, 1100);
     } else {
       // Move the keyboard focus to Next without scrolling: on a phone the
@@ -665,9 +668,21 @@ function runSession(root, cfg) {
   // Any tap in the session unlocks audio (iOS) before it's needed.
   shell.addEventListener('pointerdown', () => Audio.unlock());
 
+  // Native heartbeat (screen-off practice): if WebView timers were throttled,
+  // this still resumes audio and honours a pending auto-advance.
+  window.__practiceTick = () => {
+    try { Audio.unlock(); } catch { /* no context yet */ }
+    if (answered && autoAt && Date.now() >= autoAt) {
+      clearAuto();
+      nextQuestion();
+    }
+    try { window.AndroidPractice?.tick?.(); } catch { /* web build */ }
+  };
+
   nextQuestion();
 
   return () => {
+    if (window.__practiceTick) delete window.__practiceTick;
     document.removeEventListener('keydown', onKeydown);
     hideHelp();
     unbindGestures();

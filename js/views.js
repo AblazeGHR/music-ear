@@ -304,6 +304,13 @@ export function renderSettings(root) {
           ['en', 'English'],
           ['zh', '简体中文'],
         ], v => { s.language = v; State.save(); location.reload(); }))),
+    (typeof window !== 'undefined' && window.AndroidPractice)
+      ? row('Background reliability', 'Allow the app to keep running while the screen is off.',
+        h('button', {
+          class: 'btn small',
+          onclick: () => window.AndroidPractice.requestBatteryExemption(),
+        }, 'Allow'))
+      : null,
 
     row('Volume', 'Output level for all playback.',
       h('input', {

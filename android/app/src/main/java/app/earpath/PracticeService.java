@@ -17,6 +17,9 @@ import android.os.Build;
 import android.os.IBinder;
 import android.os.PowerManager;
 import android.util.Log;
+import android.media.session.MediaSession;
+import android.media.session.PlaybackState;
+import android.webkit.WebView;
 
 /**
  * Keeps a voice session alive with the screen off.
@@ -40,6 +43,47 @@ public class PracticeService extends Service {
     private PowerManager.WakeLock wakeLock;
     private AudioManager audioManager;
     private AudioFocusRequest focusRequest;
+    private MediaSession anchor;
+
+    private final android.os.Handler heartbeat = new android.os.Handler(android.os.Looper.getMainLooper());
+    private int jsTicks;
+    private int beats;
+    private static volatile java.lang.ref.WeakReference<WebView> webRef = new java.lang.ref.WeakReference<>(null);
+    private static volatile PracticeService instance;
+
+    /** The page is a WebView owned by the activity; the service only pokes it. */
+    static void attachWebView(WebView web) {
+        webRef = new java.lang.ref.WeakReference<>(web);
+    }
+
+    static void detachWebView(WebView web) {
+        WebView current = webRef.get();
+        if (current == web) webRef = new java.lang.ref.WeakReference<>(null);
+    }
+
+    /** JS calls this from window.__practiceTick, so we can see it is alive. */
+    static void onJsTick() {
+        PracticeService s = instance;
+        if (s == null) return;
+        s.heartbeat.post(() -> {
+            s.jsTicks++;
+            if (s.jsTicks % 5 == 0) s.updateNotification();
+        });
+    }
+
+    private final Runnable beat = new Runnable() {
+        @Override public void run() {
+            WebView web = webRef.get();
+            if (running && web != null) {
+                // resumeTimers() undoes an implicit WebView pause; the eval is
+                // the actual liveness probe and drives pending auto-advance.
+                web.resumeTimers();
+                web.evaluateJavascript("window.__practiceTick&&window.__practiceTick()", null);
+                beats++;
+            }
+            heartbeat.postDelayed(this, 1000);
+        }
+    };
 
     public static boolean isRunning() {
         return running;
@@ -48,6 +92,12 @@ public class PracticeService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         if (intent != null && ACTION_STOP.equals(intent.getAction())) {
+            stopSelf();
+            return START_NOT_STICKY;
+        }
+        // A sticky restart without an Activity means there is no page left to
+        // drive; do not leave a zombie foreground service holding the mic.
+        if (intent == null && webRef.get() == null) {
             stopSelf();
             return START_NOT_STICKY;
         }
@@ -64,9 +114,13 @@ public class PracticeService extends Service {
         }
 
         running = true;
+        instance = this;
         acquireWakeLock();
         requestAudioFocus();
-        return START_NOT_STICKY;
+        anchorSession();
+        heartbeat.removeCallbacks(beat);
+        heartbeat.postDelayed(beat, 1000);
+        return START_STICKY;
     }
 
     private void startInForeground(Notification notification) {
@@ -85,7 +139,14 @@ public class PracticeService extends Service {
     @Override
     public void onDestroy() {
         running = false;
+        instance = null;
+        heartbeat.removeCallbacks(beat);
         PracticeBridge.setActive(false);
+        if (anchor != null) {
+            try { anchor.setActive(false); } catch (Exception ignored) { }
+            try { anchor.release(); } catch (Exception ignored) { }
+            anchor = null;
+        }
         releaseAudioFocus();
         if (wakeLock != null && wakeLock.isHeld()) wakeLock.release();
         wakeLock = null;
@@ -112,6 +173,14 @@ public class PracticeService extends Service {
         nm.createNotificationChannel(channel);
     }
 
+    private void updateNotification() {
+        if (!running) return;
+        try {
+            NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+            nm.notify(NOTIFICATION_ID, buildNotification());
+        } catch (Throwable ignored) { }
+    }
+
     private Notification buildNotification() {
         Intent open = new Intent(this, MainActivity.class)
                 .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
@@ -125,9 +194,11 @@ public class PracticeService extends Service {
                 .setSmallIcon(R.drawable.ic_practice)
                 .setContentTitle(isChinese() ? "语音练习进行中" : "Voice practice running")
                 .setContentText(isChinese()
-                        ? "锁屏后仍可继续，点按返回"
-                        : "Keeps listening with the screen off — tap to return")
+                        ? "锁屏后仍可继续 · 心跳 " + jsTicks
+                        : "Listening with the screen off · heartbeat " + jsTicks)
                 .setOngoing(true)
+                .setOnlyAlertOnce(true)
+                .setVisibility(Notification.VISIBILITY_PUBLIC)
                 .setContentIntent(openIntent)
                 .setCategory(Notification.CATEGORY_SERVICE)
                 .build();
@@ -140,7 +211,9 @@ public class PracticeService extends Service {
         PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
         wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "earpath:voice-practice");
         wakeLock.setReferenceCounted(false);
-        wakeLock.acquire();
+        // Long enough for a practice session; the timeout prevents a leaked
+        // service from draining the battery forever.
+        wakeLock.acquire(12 * 60 * 60 * 1000L);
     }
 
     private void requestAudioFocus() {
@@ -155,6 +228,23 @@ public class PracticeService extends Service {
                 .setOnAudioFocusChangeListener(change -> { })
                 .build();
         audioManager.requestAudioFocus(focusRequest);
+    }
+
+    private void anchorSession() {
+        if (anchor != null) return;
+        try {
+            MediaSession s = new MediaSession(this, "earpath-practice");
+            s.setPlaybackState(new PlaybackState.Builder()
+                    .setState(PlaybackState.STATE_PAUSED, PlaybackState.PLAYBACK_POSITION_UNKNOWN, 0f)
+                    .build());
+            s.setSessionActivity(PendingIntent.getActivity(this, 0,
+                    new Intent(this, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
+                    PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE));
+            s.setActive(true);
+            anchor = s;
+        } catch (Throwable t) {
+            Log.w("earpath-practice", "media session unavailable", t);
+        }
     }
 
     private void releaseAudioFocus() {

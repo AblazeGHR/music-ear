@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.13.0 — 2026-11-20
+
+- 🌙 **Borrowed from SleepGuard: the parts that keep a process alive.** Battery-optimisation whitelist request (Settings → Background reliability, plus the manifest permission), `START_STICKY`, a 12-hour partial wake lock and a paused `MediaSession` anchor. These are the mechanisms a native background app uses; they raise the odds on aggressive ROMs
+- 💓 **Native heartbeat for screen-off practice.** While the service runs it calls `web.resumeTimers()` and `window.__practiceTick()` once a second. The tick resumes the WebAudio context and honours an overdue auto-advance even if WebView timers were throttled; the page acknowledges via `AndroidPractice.tick()`, and the notification shows the JS heartbeat count
+- The counter is also the diagnosis: if it keeps rising after locking, the page is alive and only audio routing remains; if it freezes, WebView is suspended and a native playout engine is required
+- Sticky restarts with no page attached stop immediately instead of leaving a zombie microphone service; leaving the activity stops the service
+
 ## 0.12.1 — 2026-11-20
 
 - 🔧 **Screen-off practice starts earlier.** The foreground service now starts the moment voice mode is switched on when the microphone is already granted, and immediately after the permission dialog otherwise — previously it waited for recognition to report "listening", so locking the screen during model preparation could leave the service unstarted (and Android 12+ then refuses a microphone FGS started from the background)

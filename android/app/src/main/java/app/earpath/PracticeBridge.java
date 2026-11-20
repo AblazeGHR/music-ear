@@ -2,8 +2,12 @@ package app.earpath;
 
 import android.Manifest;
 import android.app.Activity;
+import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.net.Uri;
 import android.os.Build;
+import android.os.PowerManager;
+import android.provider.Settings;
 import android.util.Log;
 import android.webkit.JavascriptInterface;
 
@@ -75,6 +79,35 @@ public class PracticeBridge {
     @JavascriptInterface
     public boolean isRunning() {
         return PracticeService.isRunning();
+    }
+
+    /** Heartbeat ack from the page; visible as a counter in the notification. */
+    @JavascriptInterface
+    public void tick() {
+        PracticeService.onJsTick();
+    }
+
+    @JavascriptInterface
+    public boolean isIgnoringBattery() {
+        PowerManager pm = (PowerManager) activity.getSystemService(Activity.POWER_SERVICE);
+        return pm != null && pm.isIgnoringBatteryOptimizations(activity.getPackageName());
+    }
+
+    @JavascriptInterface
+    public void requestBatteryExemption() {
+        activity.runOnUiThread(() -> {
+            try {
+                Intent intent = new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                        Uri.parse("package:" + activity.getPackageName()));
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                activity.startActivity(intent);
+            } catch (Throwable t) {
+                try {
+                    activity.startActivity(new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+                } catch (Throwable ignored) { }
+            }
+        });
     }
 
     @JavascriptInterface

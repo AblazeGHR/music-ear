@@ -42,6 +42,10 @@ const EXTRA = {
     '点击 ×N = 第 N 个选项（答错后试听该选项）· 划直线 = 下一题 · 长按 = 关闭 · 画圈 = 重播 · 画两圈 = 报答案名',
   'the Nth answer button — a tick plays on every tap so you can count with your eyes closed. After a miss it plays that option instead':
     '第 N 个答案按钮——每次点击都有提示音，闭眼也能数；答错后改为播放该选项',
+  'Background reliability': '后台运行',
+  'Allow the app to keep running while the screen is off.':
+    '允许应用在锁屏后继续运行；国产手机还需要在系统设置里关闭自动管理。',
+  'Allow': '去允许',
 };
 
 const flat = { ...ui, ...EXTRA };
