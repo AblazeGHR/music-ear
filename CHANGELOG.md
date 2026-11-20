@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.14.1 — 2026-11-21
+
+- 🐞 **Fixed the black screen on launch.** The gesture-mode settings block was inserted into every page function instead of only Settings; Home and Stats then called the settings helpers (`row`, `s`, `select`) that do not exist there, threw, and left only the floating feedback button. The block now lives in Settings alone; Home, Stats and Settings all render again
+- 0.14.0 was broken on launch — install 0.14.1 over it
+
 ## 0.14.0 — 2026-11-21
 
 - ✋ **Two gesture modes, chosen in Settings.** "Tap counting" is the existing behaviour; "Hold to count" answers by holding still — a tick sounds every interval, release stops it, and N ticks pick the Nth option (after a miss it plays that option). In hold mode, leaving gesture mode is a triple-tap, because holding is now the answer
