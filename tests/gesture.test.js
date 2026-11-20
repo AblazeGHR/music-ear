@@ -18,6 +18,8 @@ function recorder(options = {}) {
     onHold: () => calls.push(['hold']),
     onSwipe: () => calls.push(['swipe']),
     onCircle: loops => calls.push(['circle', loops]),
+    onRepeat: n => calls.push(['repeat', n]),
+    onExit: () => calls.push(['exit']),
   };
   return { calls, touches, rec: createRecognizer(handlers, { tapWindowMs: 30, holdMs: 40, ...options }) };
 }
@@ -201,4 +203,49 @@ test('isCircle accepts loops and rejects lookalikes', () => {
 test('the defaults leave room for deliberate gestures', () => {
   assert.ok(GESTURE_DEFAULTS.tapWindowMs >= 250 && GESTURE_DEFAULTS.tapWindowMs <= 600);
   assert.ok(GESTURE_DEFAULTS.holdMs >= 350 && GESTURE_DEFAULTS.holdMs <= 900);
+});
+
+
+// ── hold-to-count mode ──────────────────────────────────────────────────────
+
+test('hold mode ticks on an interval and commits the count on release', async () => {
+  const { calls, touches, rec } = recorder({ mode: 'hold', holdRepeatMs: 20, maxTicks: 8 });
+  rec.pointerDown(100, 100, 0);
+  await sleep(75);
+  rec.pointerUp(100, 100, 80);
+
+  const repeats = calls.filter(c => c[0] === 'repeat').length;
+  assert.ok(repeats >= 2, `expected several ticks, got ${repeats}`);
+  assert.deepEqual(calls.filter(c => c[0] === 'commit'), [['commit', repeats]],
+    'release submits exactly the number of ticks heard');
+  assert.equal(touches.length, 0, 'hold mode does not tick on touch-down');
+});
+
+test('hold mode short taps never answer; three of them exit', async () => {
+  const { calls, rec } = recorder({ mode: 'hold', holdRepeatMs: 200, exitTapWindowMs: 200 });
+  for (let i = 0; i < 3; i++) {
+    tap(rec, 100, 100, i * 10, 5);
+    await sleep(5);
+  }
+  assert.deepEqual(calls.filter(c => c[0] === 'commit'), []);
+  assert.equal(calls.filter(c => c[0] === 'exit').length, 1);
+});
+
+test('hold mode swiping cancels the ticks instead of answering', async () => {
+  const { calls, rec } = recorder({ mode: 'hold', holdRepeatMs: 15 });
+  rec.pointerDown(100, 100, 0);
+  await sleep(35);
+  rec.pointerMove(100, 50, 45);
+  rec.pointerUp(100, 50, 50);
+  assert.deepEqual(calls.filter(c => c[0] === 'commit'), []);
+  assert.equal(calls.filter(c => c[0] === 'swipe').length, 1);
+});
+
+test('hold mode stops ticking at maxTicks', async () => {
+  const { calls, rec } = recorder({ mode: 'hold', holdRepeatMs: 10, maxTicks: 3 });
+  rec.pointerDown(100, 100, 0);
+  await sleep(80);
+  rec.pointerUp(100, 100, 90);
+  assert.equal(calls.filter(c => c[0] === 'repeat').length, 3);
+  assert.deepEqual(calls.filter(c => c[0] === 'commit'), [['commit', 3]]);
 });

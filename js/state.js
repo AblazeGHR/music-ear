@@ -18,7 +18,9 @@ const DEFAULT_SETTINGS = {
   chordStyle: 'block+arp',   // 'block' | 'block+arp' | 'arp'
   degreeLabels: 'solfege',   // 'solfege' | 'number'
   melodyTempo: 0.55,         // seconds per note
-  tapWindowMs: 350,          // gesture mode: wait for another tap before answering
+  tapWindowMs: 350,          // gesture mode 'tap': wait for another tap before answering
+  gestureMode: 'tap',        // 'tap' | 'hold' — hold ticks once per interval
+  holdRepeatMs: 500,         // gesture mode 'hold': one tick per this interval
   voiceTimeoutMin: 10,       // voice mode: stop after this long without a recognised answer
   language: 'en',            // 'en' | 'zh' — interface, speech and recognition
   exercises: {},             // moduleId -> question-config overrides (see moduleConfig)
@@ -97,6 +99,14 @@ export function clearModule(moduleId) {
 // and the recognizer that consumes it.
 export const TAP_WINDOW_MIN = 100;
 export const TAP_WINDOW_MAX = 2000;
+export const HOLD_REPEAT_MIN = 200;
+export const HOLD_REPEAT_MAX = 2000;
+export function clampHoldRepeat(ms) {
+  const n = Math.round(Number(ms));
+  if (!Number.isFinite(n)) return DEFAULT_SETTINGS.holdRepeatMs;
+  return Math.min(HOLD_REPEAT_MAX, Math.max(HOLD_REPEAT_MIN, n));
+}
+
 export const VOICE_TIMEOUT_MIN = 1;
 export const VOICE_TIMEOUT_MAX = 60;
 export function clampVoiceTimeout(min) {

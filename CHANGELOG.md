@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.14.0 — 2026-11-21
+
+- ✋ **Two gesture modes, chosen in Settings.** "Tap counting" is the existing behaviour; "Hold to count" answers by holding still — a tick sounds every interval, release stops it, and N ticks pick the Nth option (after a miss it plays that option). In hold mode, leaving gesture mode is a triple-tap, because holding is now the answer
+- The Settings page shows only the control that belongs to the selected mode: tap window for tap counting, repeat interval for hold to count (200–2000 ms, default 500, applied from the next exercise). Switching the selector hides/shows the irrelevant row immediately
+- Swipe, circle, double circle, the locked controls and the answer guard are unchanged; the help sheet and the bottom hint describe the active mode
+- The recogniser's tick count is capped at the eight-option gesture limit, and a swipe or circle cancels any ticks already played so they cannot be submitted as an answer
+
 ## 0.13.0 — 2026-11-20
 
 - 🌙 **Borrowed from SleepGuard: the parts that keep a process alive.** Battery-optimisation whitelist request (Settings → Background reliability, plus the manifest permission), `START_STICKY`, a 12-hour partial wake lock and a paused `MediaSession` anchor. These are the mechanisms a native background app uses; they raise the odds on aggressive ROMs

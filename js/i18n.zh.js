@@ -156,6 +156,18 @@ export const ZH = {
   "Tap any option (or say its name) to hear it.": "点按或说出任意选项即可试听。",
   "Tap ×N = option N (after a miss: play it) · Swipe = next · Hold = off · Circle = replay · 2 circles = names": "点击 ×N = 第 N 个选项（答错后试听该选项）· 划直线 = 下一题 · 长按 = 关闭 · 画圈 = 重播 · 画两圈 = 报答案名",
   "the Nth answer button — a tick plays on every tap so you can count with your eyes closed. After a miss it plays that option instead": "第 N 个答案按钮——每次点击都有提示音，闭眼也能数；答错后改为播放该选项",
+  "Tap counting: tap N times. Hold to count: hold still and release after N ticks.": "连击计数：点 N 下选第 N 项。长按计数：按住不动，松手时响了几声就是第几项。",
+  "Tap counting": "连击计数",
+  "Hold to count": "长按计数",
+  "Tap counting only: how long the app waits for another tap before taking your answer, in milliseconds — shorter means quicker feedback. 250 is quick, 350 normal, 550 relaxed. Applies from the next exercise you open.": "仅连击计数：两次点击之间最多等多久（毫秒），越短反馈越快。250 快、350 正常、550 从容。从下一个打开的练习生效。",
+  "Hold repeat interval": "长按重复间隔",
+  "Hold to count only: one tick every this many milliseconds (200–2000); N ticks = option N. Applies from the next exercise you open.": "仅长按计数：每多少毫秒响一声（200–2000），响 N 声 = 第 N 项。从下一个打开的练习生效。",
+  "Gesture mode · hold to count": "手势模式 · 长按计数",
+  "Gesture mode · tap to count": "手势模式 · 连击计数",
+  "Press and hold: a tick every {ms} ms, release after N ticks to pick option N.": "按住不动：每 {ms} 毫秒响一声，松手时响了几声就选第几项。",
+  "Hold still": "按住不动",
+  "one tick per interval — release after N ticks to pick option N; after a miss it plays that option": "每隔一个间隔响一声——松手时响 N 声就选第 N 项；答错后改为播放该选项",
+  "Tap three times": "连按三下",
   "Background reliability": "后台运行",
   "Allow the app to keep running while the screen is off.": "允许应用在锁屏后继续运行；国产手机还需要在系统设置里关闭自动管理。",
   "Allow": "去允许",
@@ -279,7 +291,8 @@ export const ZH_TEMPLATES = {
   "Voice mode stopped after {mins} minute{s} without a recognised answer": "语音模式已关闭——{mins} 分钟内没有识别到答案",
   "It was {answer} — you chose {picked}.": "正确答案是{answer}——你选了{picked}。",
   "Answer: {notes}": "答案：{notes}",
-  "app version: {version}": "应用版本：{version}"
+  "app version: {version}": "应用版本：{version}",
+  "Press & hold: a tick every {ms} ms · Release after N ticks = option N · Triple-tap = off · Swipe = next · Circle = replay · 2 circles = names": "长按：每 {ms} 毫秒响一声 · 松手时响 N 声 = 第 N 项 · 连按三下 = 关闭 · 划直线 = 下一题 · 画圈 = 重播 · 画两圈 = 报答案"
 };
 
 // Id-keyed names: unambiguous where English display names collide

@@ -59,7 +59,11 @@ function runSession(root, cfg) {
   // not offered there.
   const MAX_GESTURE_OPTIONS = 8;
   const KBD_HINT = '1–9 answer · R replay · ⏎ next · ⌫ undo';
-  const GESTURE_HINT = 'Tap ×N = option N (after a miss: play it) · Swipe = next · Hold = off · Circle = replay · 2 circles = names';
+  const gestureMode = State.state.settings.gestureMode === 'hold' ? 'hold' : 'tap';
+  const holdRepeatMs = State.clampHoldRepeat(State.state.settings.holdRepeatMs);
+  const TAP_HINT = 'Tap ×N = option N (after a miss: play it) · Swipe = next · Hold = off · Circle = replay · 2 circles = names';
+  const HOLD_HINT = `Press & hold: a tick every ${holdRepeatMs} ms · Release after N ticks = option N · Triple-tap = off · Swipe = next · Circle = replay · 2 circles = names`;
+  const gestureHint = () => (gestureMode === 'hold' ? HOLD_HINT : TAP_HINT);
   let gestureOn = false;
   let compareRun = 0;          // generation counter for the A/B playback
   let lastChoiceId = null;
@@ -97,7 +101,9 @@ function runSession(root, cfg) {
     onTouch: () => { if (gestureOn) Audio.playNote(84, 0.045, 1, { lead: UI_LEAD }); },
     onCommit: n => { if (gestureOn) submitByCount(n); },
     onSwipe: () => { if (gestureOn) { clearAuto(); nextQuestion(); } },   // straight line → next
-    onHold: () => { if (gestureOn) setGesture(false); },                  // hold → leave
+    onHold: () => { if (gestureOn) setGesture(false); },                  // tap mode: hold → leave
+    onRepeat: () => { if (gestureOn) Audio.playNote(84, 0.045, 1, { lead: UI_LEAD }); },
+    onExit: () => { if (gestureOn) setGesture(false); },                  // hold mode: triple-tap
     onCircle: loops => {
       if (!gestureOn) return;
       // Two loops after a miss: name the answers instead of re-playing them.
@@ -109,7 +115,13 @@ function runSession(root, cfg) {
       }
       playQ();
     },
-  }, { tapWindowMs: State.clampTapWindow(State.state.settings.tapWindowMs) });
+  }, {
+    tapWindowMs: State.clampTapWindow(State.state.settings.tapWindowMs),
+    mode: gestureMode,
+    holdRepeatMs,
+    exitTapWindowMs: 600,
+    maxTicks: MAX_GESTURE_OPTIONS,
+  });
   const unbindGestures = bindPointerSurface(overlay, recognizer);
 
   function setGesture(on) {
@@ -119,7 +131,7 @@ function runSession(root, cfg) {
     shell.classList.toggle('gesture-on', on);
     gestureBtn.classList.toggle('on', on);
     gestureBtn.setAttribute('aria-checked', String(on));
-    kbdEl.textContent = on ? GESTURE_HINT : KBD_HINT;
+    kbdEl.textContent = on ? gestureHint() : KBD_HINT;
     recognizer.reset();
     if (on) { hideHelp(); Audio.playNote(76, 0.1, 1, { lead: UI_LEAD }); }   // audible "it's on"
   }
@@ -166,6 +178,7 @@ function runSession(root, cfg) {
 
   function showHelp() {
     if (helpOverlay) return;
+    const hold = gestureMode === 'hold';
     const ghRow = (gesture, meaning) => h('div', { class: 'gh-row' },
       h('span', { class: 'gh-g' }, gesture),
       h('span', { class: 'gh-arrow' }, '→'),
@@ -175,15 +188,25 @@ function runSession(root, cfg) {
       onclick: e => { if (e.target === helpOverlay) hideHelp(); },
     },
       h('div', { class: 'gesture-help card' },
-        h('h2', {}, 'Gesture mode'),
-        h('p', { class: 'muted' }, 'With the switch on, these gestures stand in for the buttons:'),
+        h('h2', {}, hold ? 'Gesture mode · hold to count' : 'Gesture mode · tap to count'),
+        h('p', { class: 'muted' }, hold
+          ? `Press and hold: a tick every ${holdRepeatMs} ms, release after N ticks to pick option N.`
+          : 'With the switch on, these gestures stand in for the buttons:'),
         h('div', { class: 'gh-rows' },
-          ghRow('Tap once', 'the 1st answer button'),
-          ghRow('Tap N times', 'the Nth answer button — a tick plays on every tap so you can count with your eyes closed. After a miss it plays that option instead'),
-          ghRow('Swipe a line', 'Next → — or skip the question if you have not answered'),
-          ghRow('Draw a circle', '▶ Play / replay — after a wrong answer it plays your pick, then the real one'),
-          ghRow('Circle twice', 'after a wrong answer, speaks your pick and then the real one — the 🔊 Names button does the same'),
-          ghRow('Long press', 'turns gesture mode off')),
+          hold ? [
+            ghRow('Hold still', 'one tick per interval — release after N ticks to pick option N; after a miss it plays that option'),
+            ghRow('Tap three times', 'turns gesture mode off'),
+            ghRow('Swipe a line', 'Next → — or skip the question if you have not answered'),
+            ghRow('Draw a circle', '▶ Play / replay — after a wrong answer it plays your pick, then the real one'),
+            ghRow('Circle twice', 'after a wrong answer, speaks your pick and then the real one — the 🔊 Names button does the same'),
+          ] : [
+            ghRow('Tap once', 'the 1st answer button'),
+            ghRow('Tap N times', 'the Nth answer button — a tick plays on every tap so you can count with your eyes closed. After a miss it plays that option instead'),
+            ghRow('Swipe a line', 'Next → — or skip the question if you have not answered'),
+            ghRow('Draw a circle', '▶ Play / replay — after a wrong answer it plays your pick, then the real one'),
+            ghRow('Circle twice', 'after a wrong answer, speaks your pick and then the real one — the 🔊 Names button does the same'),
+            ghRow('Long press', 'turns gesture mode off'),
+          ]),
         h('p', { class: 'tiny muted' }, 'A wrong answer plays your pick and then the real one, so the comparison needs no buttons. Everything else — back, Options, keyboard — stays locked until the switch is off.'),
         h('div', { class: 'gesture-help-close' },
           h('button', { class: 'btn primary', onclick: hideHelp }, 'Got it'))));

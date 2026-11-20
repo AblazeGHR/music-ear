@@ -1,26 +1,31 @@
 // gesture.js — eyes-closed input for multiple-choice exercises.
 //
-// Four disjoint gestures (they differ in movement and duration, so they can
-// never be confused with each other):
-//   • tap / N quick taps    → pick the Nth option (committed when the tap window
-//     closes, so "tap, tap" can mean "option 2" rather than two option-1 picks)
+// Two answering modes, chosen in Settings:
+//   tap  (default) — tap N times = option N, hold = leave gesture mode
+//   hold           — press and hold; every interval a tick sounds, release
+//                    stops it, N ticks = option N. Triple-tap leaves gesture
+//                    mode (hold is now the answer, so it cannot mean "exit").
+//
+// Shared gestures, unchanged in both modes:
 //   • swipe a straight line → next question (skips an ungraded one)
-//   • press and hold        → leave gesture mode
-//   • circle                → play / replay, and a second full loop (onCircle
+//   • circle                → play / replay; a second full loop (onCircle
 //     reports 2) is the "name the answers" gesture after a miss
 //
-// onTouch fires the moment the surface is touched — before anyone knows which
-// gesture it will become — so the caller can sound an instant tick. The tick is
-// feedback for the touch, not for the judgement: a hold, a swipe or a circle
-// ticks and then does its own thing, counting as no tap at all.
+// onTouch fires on touch-down only in tap mode, so the caller can sound an
+// instant tick. Hold mode sounds its ticks through onRepeat instead, one per
+// interval: N sounds must equal N taps.
 //
 // The core is a pure state machine taking explicit coordinates and timestamps,
 // so it is unit-tested without a browser; bindPointerSurface() at the bottom is
 // the only DOM-aware part.
 
 export const GESTURE_DEFAULTS = {
-  tapWindowMs: 400,        // time allowed between taps of one count
-  holdMs: 500,             // stillness beyond this reads as a hold
+  mode: 'tap',             // 'tap' | 'hold'
+  tapWindowMs: 400,        // tap mode: time allowed between taps of one count
+  holdMs: 500,             // tap mode: stillness beyond this reads as a hold
+  holdRepeatMs: 500,       // hold mode: one tick per this interval
+  exitTapWindowMs: 600,    // hold mode: max gap between the three exit taps
+  maxTicks: 8,             // hold mode: never count beyond the option grid
   moveTolerance: 14,       // px of travel still considered "not moving"
   swipeMinDist: 40,        // px of net travel for a deliberate straight swipe
   swipeMinStraightness: 0.9, // net travel / path length — near 1 reads as a line
@@ -32,12 +37,21 @@ export const GESTURE_DEFAULTS = {
 
 export function createRecognizer(handlers, options = {}) {
   const cfg = { ...GESTURE_DEFAULTS, ...options };
+  const holdMode = cfg.mode === 'hold';
   let downAt = 0, downX = 0, downY = 0, maxMove = 0;
   let path = [];
   let tapCount = 0, tapTimer = null;
+  let repeatTimer = null, repeatCount = 0;
+  let exitTaps = 0, exitTimer = null;
 
   const clearTapTimer = () => {
     if (tapTimer) { clearTimeout(tapTimer); tapTimer = null; }
+  };
+  const clearRepeat = () => {
+    if (repeatTimer) { clearTimeout(repeatTimer); repeatTimer = null; }
+  };
+  const clearExit = () => {
+    if (exitTimer) { clearTimeout(exitTimer); exitTimer = null; }
   };
 
   function commitTaps() {
@@ -47,20 +61,45 @@ export function createRecognizer(handlers, options = {}) {
     if (n > 0) handlers.onCommit?.(n);
   }
 
+  // Hold mode: first tick after one interval, then one per interval, capped
+  // at maxTicks so holding forever cannot turn into a stream of beeps.
+  function startRepeat() {
+    clearRepeat();
+    repeatCount = 0;
+    const step = () => {
+      repeatTimer = null;
+      if (!path.length) return;
+      repeatCount += 1;
+      handlers.onRepeat?.(repeatCount);
+      if (repeatCount < cfg.maxTicks) {
+        repeatTimer = setTimeout(step, cfg.holdRepeatMs);
+      }
+    };
+    repeatTimer = setTimeout(step, cfg.holdRepeatMs);
+  }
+
   return {
     pointerDown(x, y, t) {
       downAt = t; downX = x; downY = y; maxMove = 0;
       path = [{ x, y, t }];
-      // Instant, unconditional: the caller sounds a tick here so the feedback
-      // lands with the touch instead of waiting to see what the gesture
-      // becomes. Whether it counts as a tap is decided on release, as always.
-      handlers.onTouch?.();
+      if (holdMode) {
+        repeatCount = 0;
+        startRepeat();
+      } else {
+        // Instant, unconditional: the caller sounds a tick here so the feedback
+        // lands with the touch instead of waiting to see what the gesture
+        // becomes. Whether it counts as a tap is decided on release, as always.
+        handlers.onTouch?.();
+      }
     },
 
     pointerMove(x, y, t) {
       if (!path.length) return;
       path.push({ x, y, t });
       maxMove = Math.max(maxMove, Math.hypot(x - downX, y - downY));
+      // Once it is clearly a swipe or a circle, stop ticking; the ticks that
+      // already played are discarded on release.
+      if (holdMode && maxMove > cfg.moveTolerance) clearRepeat();
     },
 
     pointerUp(x, y, t) {
@@ -68,19 +107,39 @@ export function createRecognizer(handlers, options = {}) {
       path.push({ x, y, t });
       maxMove = Math.max(maxMove, Math.hypot(x - downX, y - downY));
       const duration = t - downAt;
+      clearRepeat();
 
       if (maxMove > cfg.moveTolerance && isCircle(path, cfg)) {
-        // A second loop is its own gesture ("name the answers" in gesture mode).
+        repeatCount = 0;
         handlers.onCircle?.(circleLoops(path, cfg));
       } else if (maxMove > cfg.moveTolerance && isSwipe(path, cfg)) {
-        // A deliberate line wins over taps still waiting to commit, for the
-        // same reason a hold does: they were not an intended answer.
         clearTapTimer();
         tapCount = 0;
+        repeatCount = 0;
         handlers.onSwipe?.();
+      } else if (maxMove <= cfg.moveTolerance && holdMode) {
+        if (repeatCount > 0) {
+          const n = repeatCount;
+          repeatCount = 0;
+          clearExit();
+          exitTaps = 0;
+          handlers.onCommit?.(n);
+        } else {
+          // A short tap is only the exit gesture here; it never answers.
+          exitTaps += 1;
+          clearExit();
+          if (exitTaps >= 3) {
+            exitTaps = 0;
+            handlers.onExit?.();
+          } else {
+            exitTimer = setTimeout(() => {
+              exitTaps = 0;
+              exitTimer = null;
+            }, cfg.exitTapWindowMs);
+          }
+        }
       } else if (maxMove <= cfg.moveTolerance && duration >= cfg.holdMs) {
-        // A hold wins over taps still waiting to commit — they were almost
-        // certainly part of reaching for the hold, not an intended answer.
+        // Tap mode only: a hold wins over taps still waiting to commit.
         clearTapTimer();
         tapCount = 0;
         handlers.onHold?.();
@@ -91,17 +150,22 @@ export function createRecognizer(handlers, options = {}) {
         tapTimer = setTimeout(commitTaps, cfg.tapWindowMs);
       }
       // Anything else (a curve that is neither a line nor a loop) is ignored.
+      repeatCount = 0;
       path = [];
     },
 
-    // Drop any pending tap count — used when the question changes underneath.
+    // Drop anything pending — used when the question changes underneath.
     reset() {
       clearTapTimer();
+      clearRepeat();
+      clearExit();
       tapCount = 0;
+      repeatCount = 0;
+      exitTaps = 0;
       path = [];
     },
 
-    get pending() { return tapCount; },
+    get pending() { return holdMode ? repeatCount : tapCount; },
   };
 }
 

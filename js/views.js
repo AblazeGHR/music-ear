@@ -25,6 +25,37 @@ function topbar(active = '') {
 // ── home ──────────────────────────────────────────────────────────────────────
 
 export function renderHome(root) {
+  const gestureModeRow = row('Gesture mode', 'Tap counting: tap N times. Hold to count: hold still and release after N ticks.',
+    select(s.gestureMode, [
+      ['tap', 'Tap counting'],
+      ['hold', 'Hold to count'],
+    ], v => {
+      s.gestureMode = v === 'hold' ? 'hold' : 'tap';
+      State.save();
+      syncGestureSettings();
+    }));
+
+  const tapWindowRow = row('Gesture tap window', 'Tap counting only: how long the app waits for another tap before taking your answer, in milliseconds — shorter means quicker feedback. 250 is quick, 350 normal, 550 relaxed. Applies from the next exercise you open.',
+    numberInput(s.tapWindowMs, {
+      min: State.TAP_WINDOW_MIN,
+      max: State.TAP_WINDOW_MAX,
+      onInput: v => { s.tapWindowMs = State.clampTapWindow(v); State.save(); },
+    }));
+
+  const holdRepeatRow = row('Hold repeat interval', 'Hold to count only: one tick every this many milliseconds (200–2000); N ticks = option N. Applies from the next exercise you open.',
+    numberInput(s.holdRepeatMs, {
+      min: State.HOLD_REPEAT_MIN,
+      max: State.HOLD_REPEAT_MAX,
+      step: 50,
+      onInput: v => { s.holdRepeatMs = State.clampHoldRepeat(v); State.save(); },
+    }));
+
+  function syncGestureSettings() {
+    tapWindowRow.style.display = s.gestureMode === 'hold' ? 'none' : '';
+    holdRepeatRow.style.display = s.gestureMode === 'hold' ? '' : 'none';
+  }
+  syncGestureSettings();
+
   const page = h('div', { class: 'page' },
     topbar(),
     h('p', { class: 'home-intro' },
@@ -160,6 +191,37 @@ export function renderStats(root, focusModuleId = null) {
 
   let focusRef = null;
 
+  const gestureModeRow = row('Gesture mode', 'Tap counting: tap N times. Hold to count: hold still and release after N ticks.',
+    select(s.gestureMode, [
+      ['tap', 'Tap counting'],
+      ['hold', 'Hold to count'],
+    ], v => {
+      s.gestureMode = v === 'hold' ? 'hold' : 'tap';
+      State.save();
+      syncGestureSettings();
+    }));
+
+  const tapWindowRow = row('Gesture tap window', 'Tap counting only: how long the app waits for another tap before taking your answer, in milliseconds — shorter means quicker feedback. 250 is quick, 350 normal, 550 relaxed. Applies from the next exercise you open.',
+    numberInput(s.tapWindowMs, {
+      min: State.TAP_WINDOW_MIN,
+      max: State.TAP_WINDOW_MAX,
+      onInput: v => { s.tapWindowMs = State.clampTapWindow(v); State.save(); },
+    }));
+
+  const holdRepeatRow = row('Hold repeat interval', 'Hold to count only: one tick every this many milliseconds (200–2000); N ticks = option N. Applies from the next exercise you open.',
+    numberInput(s.holdRepeatMs, {
+      min: State.HOLD_REPEAT_MIN,
+      max: State.HOLD_REPEAT_MAX,
+      step: 50,
+      onInput: v => { s.holdRepeatMs = State.clampHoldRepeat(v); State.save(); },
+    }));
+
+  function syncGestureSettings() {
+    tapWindowRow.style.display = s.gestureMode === 'hold' ? 'none' : '';
+    holdRepeatRow.style.display = s.gestureMode === 'hold' ? '' : 'none';
+  }
+  syncGestureSettings();
+
   const page = h('div', { class: 'page' },
     topbar('stats'),
     h('h1', {}, 'Your progress'),
@@ -294,6 +356,37 @@ export function renderSettings(root) {
     },
   });
 
+  const gestureModeRow = row('Gesture mode', 'Tap counting: tap N times. Hold to count: hold still and release after N ticks.',
+    select(s.gestureMode, [
+      ['tap', 'Tap counting'],
+      ['hold', 'Hold to count'],
+    ], v => {
+      s.gestureMode = v === 'hold' ? 'hold' : 'tap';
+      State.save();
+      syncGestureSettings();
+    }));
+
+  const tapWindowRow = row('Gesture tap window', 'Tap counting only: how long the app waits for another tap before taking your answer, in milliseconds — shorter means quicker feedback. 250 is quick, 350 normal, 550 relaxed. Applies from the next exercise you open.',
+    numberInput(s.tapWindowMs, {
+      min: State.TAP_WINDOW_MIN,
+      max: State.TAP_WINDOW_MAX,
+      onInput: v => { s.tapWindowMs = State.clampTapWindow(v); State.save(); },
+    }));
+
+  const holdRepeatRow = row('Hold repeat interval', 'Hold to count only: one tick every this many milliseconds (200–2000); N ticks = option N. Applies from the next exercise you open.',
+    numberInput(s.holdRepeatMs, {
+      min: State.HOLD_REPEAT_MIN,
+      max: State.HOLD_REPEAT_MAX,
+      step: 50,
+      onInput: v => { s.holdRepeatMs = State.clampHoldRepeat(v); State.save(); },
+    }));
+
+  function syncGestureSettings() {
+    tapWindowRow.style.display = s.gestureMode === 'hold' ? 'none' : '';
+    holdRepeatRow.style.display = s.gestureMode === 'hold' ? '' : 'none';
+  }
+  syncGestureSettings();
+
   const page = h('div', { class: 'page' },
     topbar('settings'),
     h('h1', {}, 'Settings'),
@@ -323,12 +416,9 @@ export function renderSettings(root) {
       })),
     row('Auto-advance', 'Move to the next question automatically after a correct answer.',
       toggle(s.autoAdvance, v => { s.autoAdvance = v; State.save(); })),
-    row('Gesture tap window', 'How long the app waits for another tap before taking your answer in gesture mode, in milliseconds — shorter means quicker feedback. 250 is quick, 350 normal, 550 relaxed. Applies from the next exercise you open.',
-      numberInput(s.tapWindowMs, {
-        min: State.TAP_WINDOW_MIN,
-        max: State.TAP_WINDOW_MAX,
-        onInput: v => { s.tapWindowMs = State.clampTapWindow(v); State.save(); },
-      })),
+    gestureModeRow,
+    tapWindowRow,
+    holdRepeatRow,
     row('Voice idle timeout', 'Voice mode turns itself off after this many minutes without a recognised answer or command (1–60). Default 10.',
       numberInput(s.voiceTimeoutMin, {
         min: State.VOICE_TIMEOUT_MIN,
