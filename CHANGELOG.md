@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.15.0 — 2026-11-21
+
+- ♾️ **Gesture mode no longer stops at eight options.** Every multiple-choice exercise now offers the switch — including Absolute Pitch (12), Chords (11 by default) and any widened pool. Both modes validate the counted number against the question instead of hiding the control
+- Hold-to-count ticks are uncapped as well; holding long enough can reach any option. The trade-off is yours: at 500 ms per tick, option 11 is a 5.5 s hold, and the interval can be lowered to 200 ms
+- Progressions and Melodies still have no gesture switch: they are not multiple-choice, and there is no option grid to count
+
 ## 0.14.1 — 2026-11-21
 
 - 🐞 **Fixed the black screen on launch.** The gesture-mode settings block was inserted into every page function instead of only Settings; Home and Stats then called the settings helpers (`row`, `s`, `select`) that do not exist there, threw, and left only the floating feedback button. The block now lives in Settings alone; Home, Stats and Settings all render again

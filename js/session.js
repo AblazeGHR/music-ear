@@ -54,10 +54,10 @@ function runSession(root, cfg) {
   const optionsEl = renderOptions(mod, () => { if (!answered) nextQuestion(); });
 
   // ── gesture mode (eyes-closed input) ───────────────────────────────────────
-  // Only multiple-choice questions with a small pool get it: counting taps to
-  // twelve while blind is not a skill anyone needs, so the switch simply is
-  // not offered there.
-  const MAX_GESTURE_OPTIONS = 8;
+  // Every multiple-choice question gets it, whatever the option count. The
+  // caller validates the counted number against the question; counting is the
+  // user's own trade-off.
+
   const KBD_HINT = '1–9 answer · R replay · ⏎ next · ⌫ undo';
   const gestureMode = State.state.settings.gestureMode === 'hold' ? 'hold' : 'tap';
   const holdRepeatMs = State.clampHoldRepeat(State.state.settings.holdRepeatMs);
@@ -120,7 +120,7 @@ function runSession(root, cfg) {
     mode: gestureMode,
     holdRepeatMs,
     exitTapWindowMs: 600,
-    maxTicks: MAX_GESTURE_OPTIONS,
+    maxTicks: Number.POSITIVE_INFINITY,
   });
   const unbindGestures = bindPointerSurface(overlay, recognizer);
 
@@ -228,7 +228,7 @@ function runSession(root, cfg) {
   }
 
   function syncGestureAffordance() {
-    const eligible = !!q && q.kind === 'choice' && q.options.length <= MAX_GESTURE_OPTIONS;
+    const eligible = !!q && q.kind === 'choice';
     gestureBtn.classList.toggle('hidden', !eligible);
     helpBtn.classList.toggle('hidden', !eligible);
     if (!eligible && gestureOn) setGesture(false);

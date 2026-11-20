@@ -25,7 +25,7 @@ export const GESTURE_DEFAULTS = {
   holdMs: 500,             // tap mode: stillness beyond this reads as a hold
   holdRepeatMs: 500,       // hold mode: one tick per this interval
   exitTapWindowMs: 600,    // hold mode: max gap between the three exit taps
-  maxTicks: 8,             // hold mode: never count beyond the option grid
+  maxTicks: Number.POSITIVE_INFINITY, // hold mode: no option-count limit
   moveTolerance: 14,       // px of travel still considered "not moving"
   swipeMinDist: 40,        // px of net travel for a deliberate straight swipe
   swipeMinStraightness: 0.9, // net travel / path length — near 1 reads as a line
@@ -61,8 +61,8 @@ export function createRecognizer(handlers, options = {}) {
     if (n > 0) handlers.onCommit?.(n);
   }
 
-  // Hold mode: first tick after one interval, then one per interval, capped
-  // at maxTicks so holding forever cannot turn into a stream of beeps.
+  // Hold mode: first tick after one interval, then one per interval. There is
+  // no option-count cap; the caller validates the count against the question.
   function startRepeat() {
     clearRepeat();
     repeatCount = 0;

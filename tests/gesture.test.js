@@ -249,3 +249,14 @@ test('hold mode stops ticking at maxTicks', async () => {
   assert.equal(calls.filter(c => c[0] === 'repeat').length, 3);
   assert.deepEqual(calls.filter(c => c[0] === 'commit'), [['commit', 3]]);
 });
+
+
+test('hold mode has no option-count ceiling', async () => {
+  const { calls, rec } = recorder({ mode: 'hold', holdRepeatMs: 5 });
+  rec.pointerDown(100, 100, 0);
+  await sleep(260);              // Windows timer granularity is ~15 ms
+  rec.pointerUp(100, 100, 270);
+  const repeats = calls.filter(c => c[0] === 'repeat').length;
+  assert.ok(repeats > 8, `expected more than eight ticks, got ${repeats}`);
+  assert.deepEqual(calls.filter(c => c[0] === 'commit'), [['commit', repeats]]);
+});
