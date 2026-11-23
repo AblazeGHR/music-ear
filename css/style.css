@@ -1248,3 +1248,6 @@ body {
 
 /* The sticky exercise header must never sit above the gesture shield. */
 .session.gesture-on .gesture-overlay { z-index: 35; }
+
+/* Five controls plus the score can just overflow a 320 px phone; let them wrap. */
+.s-tools { flex-wrap: wrap; }
