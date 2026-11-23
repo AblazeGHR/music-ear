@@ -67,10 +67,10 @@ const EXTRA = {
   // Sight reading (v0.17.0) — the ninth exercise.
   'Sight Reading': '视奏',
   'Play what you see': '看谱弹出旋律',
-  'Read the melody from the score and play it back on the keyboard, in order. Nothing plays unless you ask for it.':
-    '照着谱面读出旋律，在琴键上按顺序弹出。作答前不会自动发声，除非你主动播放。',
-  'Read a short melody from the page and play it back. No listening — the notes are all on the staff.':
-    '看一小段乐谱，把旋律弹出来。不靠听力——所有音符都写在谱上。',
+  'Read the melody from the score and play it back on the keyboard, in order. No reference sound by default — turn on “Play the melody first” in Options, or hear the answer after you play.':
+    '照着谱面读出旋律，在琴键上按顺序弹出。默认不播放参考音；可在选项里打开“先播放参考旋律”，作答后可听正确答案。',
+  'Read a short melody from the page and play it back. No listening — the notes are all on the page.':
+    '看一小段乐谱，把旋律弹出来。不靠听力——所有音符都写在谱面上。',
   'Read by interval, not by letter: find the first note, then measure each move from the one before. Hum the line in your head before you touch a key.':
     '用音程读谱，而不是逐个认字母：先找到第一个音，再看每个音与上一个音的距离。落键前先在脑子里哼一遍。',
   'Notation': '记谱方式',
@@ -93,7 +93,7 @@ const EXTRA = {
   'R replay · ⏎ next · ⌫ undo': 'R 重播 · ⏎ 下一题 · ⌫ 撤销',
   'treble staff': '五线谱（高音谱号）',
   'guitar tab': '六线谱',
-  'A short melody written on the staff. Play it back on the keyboard, in order.':
+  'A short melody written on the page. Play it back on the keyboard, in order.':
     '谱面上的短旋律，请在琴键上按顺序弹出。',
 };
 

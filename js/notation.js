@@ -17,12 +17,19 @@ export const GEOM = {
   startX: 64,      // first note column; clef and time signature sit to its left
   beatW: 32,       // px per beat
   beats: 4,        // 4/4
-  measuresPerSystem: 2,
+  maxBarsPerSystem: 4,
   systemH: 112,
   stem: 18,
   headRx: 4.6,
   headRy: 3.4,
 };
+
+// The treble clef is drawn small enough to sit inside the staff's own height:
+// 0.62 of the glyph outline, anchored on the G line (where the spiral belongs).
+export const CLEF = { x: 24, y: 70, scale: 0.62 };
+// Conservative vertical extent of the outline in its own coordinates, so the
+// scale can be checked against the staff without parsing the path.
+export const CLEF_OUTLINE = { top: -31.5, bottom: 31 };
 
 // Where a diatonic step lands vertically. E4 (step 30) is the bottom staff
 // line, F5 (step 38) the top one; middle C (step 28) hangs one ledger below.
@@ -98,10 +105,20 @@ export function layoutScore(notes, opts = {}) {
   if (!notes.length) total = g.beats;
   const measures = Math.max(1, Math.ceil((total - 1e-9) / g.beats));
 
+  // Balance the bars across systems: four at most per system, and never a
+  // system left holding a single orphan bar (3 bars → one system, 5 → 3 + 2).
+  const systemCount = Math.ceil(measures / g.maxBarsPerSystem);
+  const barsPerSystem = [];
+  for (let left = measures, systemsLeft = systemCount; systemsLeft > 0; systemsLeft--) {
+    const take = Math.ceil(left / systemsLeft);
+    barsPerSystem.push(take);
+    left -= take;
+  }
+
   const systems = [];
-  for (let m = 0; m < measures; m += g.measuresPerSystem) {
-    const fromMeasure = m;
-    const toMeasure = Math.min(measures, m + g.measuresPerSystem);
+  let fromMeasure = 0;
+  for (const bars of barsPerSystem) {
+    const toMeasure = fromMeasure + bars;
     const fromBeat = fromMeasure * g.beats;
     const toBeat = Math.min(toMeasure * g.beats, total);
     // The closing barline sits a little before the last beat position, so a
@@ -119,6 +136,7 @@ export function layoutScore(notes, opts = {}) {
       width: endX + 8,
       height: g.systemH,
     });
+    fromMeasure = toMeasure;
   }
 
   // Lines and barlines, per system.
@@ -247,8 +265,8 @@ export function layoutScore(notes, opts = {}) {
 // ── Markup ───────────────────────────────────────────────────────────────────
 
 // Scores are drawn at one comfortable width whatever their beat count, so a
-// one-bar melody is not tiny and a four-bar one is not a wall.
-const SCORE_MAX_W = 340;
+// one-bar melody is not tiny and an eight-bar one is not a wall.
+export const SCORE_MAX_W = 340;
 
 const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
   .replace(/"/g, '&quot;');
@@ -271,8 +289,11 @@ const TREBLE_CLEF = [
 
 function noteHead(n) {
   const g = GEOM;
+  // Half notes and longer are open heads: outline only, no fill.
+  const open = n.beats >= 2;
   return `<ellipse class="st-head" cx="${n.x}" cy="${n.y}" rx="${g.headRx}" ry="${g.headRy}"`
-    + ` transform="rotate(-18 ${n.x} ${n.y})" fill="currentColor"/>`;
+    + ` transform="rotate(-18 ${n.x} ${n.y})"`
+    + (open ? ' fill="none" stroke="currentColor" stroke-width="1.6"/>' : ' fill="currentColor"/>');
 }
 
 function staffSystem(sys, layout, sysTop) {
@@ -283,10 +304,11 @@ function staffSystem(sys, layout, sysTop) {
     parts.push(`<line class="st-line" data-role="staff-line" x1="${l.x1}" y1="${l.y}" x2="${l.x2}" y2="${l.y}"`
       + ` stroke="currentColor" stroke-width="1"/>`);
   }
-  // Clef and time signature.
+  // Clef and time signature. The clef is scaled around the G line so the
+  // spiral stays on it; the 4/4 sits clear of the (now smaller) glyph.
   if (layout.notation === 'staff') {
-    parts.push(`<g class="st-clef" transform="translate(24 70)" fill="none" stroke="currentColor"`
-      + ` stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">`
+    parts.push(`<g class="st-clef" transform="translate(${CLEF.x} ${CLEF.y}) scale(${CLEF.scale})"`
+      + ` fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">`
       + `<path d="${TREBLE_CLEF}"/></g>`);
     parts.push(`<text class="st-time" x="46" y="57" font-size="13" font-weight="700" fill="currentColor">4</text>`);
     parts.push(`<text class="st-time" x="46" y="75" font-size="13" font-weight="700" fill="currentColor">4</text>`);
@@ -316,7 +338,7 @@ function staffSystem(sys, layout, sysTop) {
       parts.push(`<text class="st-fret" data-role="fret" x="${n.x}" y="${y + 3.4}" font-size="10.5"`
         + ` font-weight="700" text-anchor="middle" fill="currentColor">${n.fret ?? '·'}</text>`);
       if (n.stemDir === 'up') {
-        parts.push(`<line class="st-stem" data-role="stem" x1="${n.x + 4.2}" y1="${y - 3}" x2="${n.x + 4.2}" y2="${n.stemY}" stroke="currentColor" stroke-width="1.8"/>`);
+        parts.push(`<line class="st-stem" data-role="stem" x1="${n.x + 4.2}" y1="${y - 1.5}" x2="${n.x + 4.2}" y2="${n.stemY}" stroke="currentColor" stroke-width="1.8"/>`);
       }
       if (n.beam === null && n.beats === 0.5) {
         parts.push(`<path class="st-flag" data-role="flag" d="M ${n.x + 4.2} ${n.stemY} c 5 2 6 7 3 11" stroke="currentColor" stroke-width="1.8" fill="none"/>`);
@@ -348,8 +370,8 @@ function staffSystem(sys, layout, sysTop) {
   if (layout.notation === 'tab') {
     parts.push(`<text class="st-tab-label" x="8" y="63" font-size="10.5" font-weight="700"`
       + ` letter-spacing="1.5" fill="currentColor">TAB</text>`);
-    parts.push(`<text class="st-time" x="46" y="58" font-size="12" font-weight="700" fill="currentColor">4</text>`);
-    parts.push(`<text class="st-time" x="46" y="76" font-size="12" font-weight="700" fill="currentColor">4</text>`);
+    // Time signature above the six lines: inside them it reads as a fret number.
+    parts.push(`<text class="st-time" x="46" y="32" font-size="11" font-weight="700" fill="currentColor">4/4</text>`);
   }
 
   parts.push('</g>');
@@ -376,7 +398,7 @@ export function renderScore(notes, opts = {}) {
 
   return `<svg class="score-svg score-${layout.notation}" xmlns="http://www.w3.org/2000/svg"`
     + ` viewBox="0 0 ${layout.width} ${layout.height}" width="100%"`
-    + ` style="max-width:${SCORE_MAX_W}px" role="img" aria-label="${esc(title)}">`
+    + ` style="max-width:${Math.max(SCORE_MAX_W, layout.width)}px" role="img" aria-label="${esc(title)}">`
     + `<title>${esc(title)}</title><desc>${esc(desc)}</desc>`
     + body
     + '</svg>';

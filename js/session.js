@@ -13,7 +13,7 @@ import { voiceSupported, createVoiceController } from './voice.js';
 import { theoryName, t, translate } from './i18n.js';
 import { buildScreenOffSession } from './screenoff.js';
 import { createPiano } from './piano.js';
-import { renderScore } from './notation.js';
+import { renderScore, layoutScore, SCORE_MAX_W } from './notation.js';
 import { midiName } from './theory.js';
 import { track } from './analytics.js';
 
@@ -701,11 +701,15 @@ function runSession(root, cfg) {
   function renderReading() {
     userMidis = [];
     const scoreWrap = h('div', { class: 'score-wrap' });
+    // A long score (two systems of four bars) keeps its natural width on a
+    // wide screen instead of shrinking into a postage stamp.
+    const width = layoutScore(q.notes, { notation: q.notation, showNames: q.showNames }).width;
+    scoreWrap.style.maxWidth = `${Math.max(SCORE_MAX_W + 20, width + 12)}px`;
     scoreWrap.innerHTML = renderScore(q.notes, {
       notation: q.notation,
       showNames: q.showNames,
       title: scoreTitle(),
-      desc: t('A short melody written on the staff. Play it back on the keyboard, in order.'),
+      desc: t('A short melody written on the page. Play it back on the keyboard, in order.'),
     });
 
     slotEls = q.targetMidis.map(() => h('div', { class: 'slot note' }, '·'));

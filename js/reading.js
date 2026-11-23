@@ -2,7 +2,7 @@
 //
 // The generator owns pitch, rhythm and the tab mapping. Everything here is a
 // pure function of (config, random) so the musical constraints — stepwise
-// motion, the register of each notation, four bars at most — can be asserted
+// motion, the register of each notation, eight bars at most — can be asserted
 // in node --test.
 
 import * as Audio from './audio.js';
@@ -28,7 +28,7 @@ export const RHYTHMS = {
 export const RHYTHM_IDS = Object.keys(RHYTHMS);
 
 export const NOTE_COUNTS = [4, 6, 8, 12, 16];
-export const MAX_BEATS = 16;        // four bars of 4/4 — the widest score drawn
+export const MAX_BEATS = 32;        // eight bars of 4/4 — the widest score drawn
 export const BEAT_SECONDS = 0.55;   // reference playback tempo
 
 const rand = Math.random;
@@ -59,7 +59,7 @@ export function normaliseCount(n) {
 
 /**
  * Melody rhythm: cells chosen from the selected set until the note count is
- * reached or four bars are full. Cells always fit the bar they start in; when
+ * reached or eight bars are full. Cells always fit the bar they start in; when
  * only a fraction of a cell is still needed the first note of the shortest
  * fitting cell is used, so the requested note count is hit exactly.
  */

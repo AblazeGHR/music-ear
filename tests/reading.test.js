@@ -1,5 +1,5 @@
 // reading.test.js — sight reading must produce a melody a person can actually
-// read: inside the exercise's register and key, mostly stepwise, four bars at
+// read: inside the exercise's register and key, mostly stepwise, eight bars at
 // most, and every tab note reachable in the first five frets.
 
 import test from 'node:test';
@@ -44,9 +44,9 @@ test('sight-reading questions stay inside the register, key and metre', () => {
       assert.ok(Math.min(...q.targetMidis) >= Math.min(...pool));
       assert.ok(Math.max(...q.targetMidis) <= Math.max(...pool));
 
-      // Metre: cells of the chosen values, four bars at most.
+      // Metre: cells of the chosen values, eight bars at most.
       const beats = q.notes.reduce((a, n) => a + n.beats, 0);
-      assert.ok(beats <= MAX_BEATS + 1e-9, `beats ${beats} must fit four bars`);
+      assert.ok(beats <= MAX_BEATS + 1e-9, `beats ${beats} must fit eight bars`);
       assert.ok(beats > 0);
       for (const n of q.notes) assert.ok([0.5, 1, 1.5, 2].includes(n.beats), `duration ${n.beats}`);
 
@@ -69,18 +69,19 @@ test('sight-reading questions stay inside the register, key and metre', () => {
   }
 });
 
-test('the requested note count is honoured whenever the rhythm allows it', () => {
+test('the requested note count is honoured for every rhythm at every length', () => {
   for (const notes of NOTE_COUNTS) {
-    for (const rhythm of ['quarter', 'eighths', 'dotted']) {
+    for (const rhythm of Object.keys(RHYTHMS)) {
       const q = generate('reading', { ...mod.defaults, notation: 'staff', notes, rhythms: [rhythm] });
       assert.equal(q.notes.length, notes, `${rhythm} × ${notes}`);
     }
   }
-  // Half notes are two beats each, so sixteen of them would need eight bars:
-  // the melody is trimmed to the four bars the score draws.
+  // Half notes are two beats each: sixteen of them is eight bars, which is the
+  // widest score the exercise draws — and the count is still exactly sixteen.
   const heavy = generate('reading', { ...mod.defaults, notes: 16, rhythms: ['half'] });
-  assert.ok(heavy.notes.length <= 8);
-  assert.ok(heavy.notes.reduce((a, n) => a + n.beats, 0) <= MAX_BEATS);
+  assert.equal(heavy.notes.length, 16);
+  assert.equal(heavy.notes.reduce((a, n) => a + n.beats, 0), MAX_BEATS);
+  assert.equal(MAX_BEATS / 4, 8, 'eight bars of 4/4');
 });
 
 test('rhythm generation fills whole bars and truncates only the last one', () => {

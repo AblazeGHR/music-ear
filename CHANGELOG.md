@@ -4,7 +4,7 @@
 
 - 𝄞 **Ninth exercise: Sight Reading.** A short melody is written on the page and you play it back on the keyboard, in order — no listening involved. It sits on the home grid beside the other eight, with no levels or unlock of any kind
 - **Two notations**: treble staff (C4–C6, five lines, clef, 4/4, barlines, ledger lines, beamed eighths) and guitar tab (standard tuning, six lines, frets 0–4, note range G3–G4). Both are drawn as self-contained SVG by a new dependency-free engraver — no VexFlow, no fonts, no network
-- **Options**: notation, 4/6/8/12/16 notes, rhythm cells (quarter, two eighths, dotted quarter + eighth, half notes), “play the melody first”, and “show note names”. Four bars of 4/4 at most; a melody that would need more is trimmed to what the score can draw
+- **Options**: notation, 4/6/8/12/16 notes, rhythm cells (quarter, two eighths, dotted quarter + eighth, half notes), “play the melody first”, and “show note names”. Up to eight bars of 4/4, split into balanced systems of at most four bars; the note count you pick is always honoured
 - Melodies stay stepwise (mostly one or two scale steps, occasionally three), start on do/mi/sol and end on do or sol, and never repeat a note more than twice
 - Answering is silent by default: the reference melody only plays when you ask for it or switch “play the melody first” on. After you answer, every wrong note is marked on the score and in the slot row, the answer names are listed, and “Hear the answer” plays it back
 - Statistics use a new `sr` item prefix and are keyed by the configuration (notation + note count + rhythm set), so the same reading skill is tracked together; training aids do not change the key. Per-answer breakdowns and confusion pairs do not apply to a whole-melody answer

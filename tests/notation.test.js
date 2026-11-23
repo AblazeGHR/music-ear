@@ -8,6 +8,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   layoutScore, renderScore, diatonicStep, noteY, fretFor, tabLineY, GEOM,
+  CLEF, CLEF_OUTLINE,
 } from '../js/notation.js';
 import { STAFF_POOL, TAB_POOL } from '../js/reading.js';
 
@@ -25,6 +26,40 @@ test('pitch maps to the staff line it belongs to', () => {
   // One diatonic step is half a space; a black key has no staff position here.
   assert.equal(diatonicStep(65) - diatonicStep(64), 1);
   assert.equal(diatonicStep(61), null);
+});
+
+test('the clef is scaled to the staff and its spiral stays on the G line', () => {
+  // The spiral circles G4: the anchor must sit on that line.
+  assert.equal(CLEF.y, noteY(67));
+  assert.ok(CLEF.scale > 0.55 && CLEF.scale < 0.7, 'clef is drawn at ~0.62');
+
+  // The glyph never reaches more than one staff space past either edge.
+  const top = CLEF.y + CLEF_OUTLINE.top * CLEF.scale;
+  const bottom = CLEF.y + CLEF_OUTLINE.bottom * CLEF.scale;
+  assert.ok(top >= GEOM.top - GEOM.lineGap, `clef top ${top} above the staff`);
+  assert.ok(bottom <= GEOM.bottom + GEOM.lineGap, `clef bottom ${bottom} below the staff`);
+  // A 3.2 unit stroke at this scale reads as ~2 units on screen.
+  const stroke = 3.2 * CLEF.scale;
+  assert.ok(stroke > 1.8 && stroke < 2.2, `visual stroke ${stroke}`);
+
+  const svg = renderScore(notesOf([60, 62, 64, 65]), { notation: 'staff' });
+  assert.match(svg, new RegExp(`translate\\(${CLEF.x} ${CLEF.y}\\) scale\\(${CLEF.scale}\\)`));
+  // The 4/4 columns start at x=46, well clear of the clef's right edge.
+  const clefRight = CLEF.x + 5.6 * CLEF.scale;
+  assert.ok(46 - clefRight >= 10, `time signature is ${46 - clefRight} units from the clef`);
+});
+
+test('half notes are drawn as open heads, shorter notes filled', () => {
+  const half = renderScore(notesOf([60, 64], 2));
+  assert.equal((half.match(/class="st-head"[^>]*fill="none"[^>]*stroke-width="1.6"/g) || []).length, 2);
+  assert.equal((half.match(/class="st-head"[^>]*fill="currentColor"/g) || []).length, 0);
+
+  for (const beats of [0.5, 1, 1.5]) {
+    const filled = renderScore([{ midi: 60, beats }, { midi: 62, beats }]);
+    assert.equal((filled.match(/class="st-head"[^>]*fill="currentColor"/g) || []).length, 2,
+      `a ${beats}-beat note is filled`);
+    assert.equal((filled.match(/class="st-head"[^>]*fill="none"/g) || []).length, 0);
+  }
 });
 
 test('ledger lines appear only for notes outside the staff', () => {
@@ -64,7 +99,8 @@ test('stems follow the middle line and eighth pairs are beamed by beat', () => {
 });
 
 test('notes never overlap and never sit on a barline', () => {
-  const lay = layoutScore(notesOf(Array.from({ length: 16 }, (_, i) => 60 + (i % 2 === 0 ? 0 : 2)), 1));
+  // Five bars: three on the first system, two on the second.
+  const lay = layoutScore(notesOf(Array.from({ length: 20 }, (_, i) => 60 + (i % 2 === 0 ? 0 : 2)), 1));
   for (let i = 1; i < lay.notes.length; i++) {
     if (lay.notes[i].system !== lay.notes[i - 1].system) {
       // A new system starts back at the left margin.
@@ -74,8 +110,7 @@ test('notes never overlap and never sit on a barline', () => {
     const dx = lay.notes[i].x - lay.notes[i - 1].x;
     assert.ok(dx >= 14, `notes ${i - 1} and ${i} are ${dx}px apart`);
   }
-  // Four bars = two systems of two bars each; the second system restarts at left.
-  assert.equal(lay.measures, 4);
+  assert.equal(lay.measures, 5);
   assert.equal(lay.systems.length, 2);
 
   // A note on the first beat of a bar clears the barline by a small margin.
@@ -87,6 +122,25 @@ test('notes never overlap and never sit on a barline', () => {
         assert.ok(n.x + GEOM.headRx <= bar.x || n.x - GEOM.headRx >= bar.x);
       }
     }
+  }
+});
+
+test('systems are balanced: at most four bars, never a one-bar orphan', () => {
+  const bars = n => layoutScore(notesOf(Array.from({ length: n * 4 }, () => 60), 1));
+  const shape = n => bars(n).systems.map(s => Math.round((s.toBeat - s.fromBeat) / GEOM.beats));
+
+  assert.deepEqual(shape(1), [1]);
+  assert.deepEqual(shape(2), [2]);
+  // Three bars used to split into 2 + 1; now it stays on one system.
+  assert.deepEqual(shape(3), [3]);
+  assert.deepEqual(shape(4), [4]);
+  assert.deepEqual(shape(5), [3, 2]);
+  assert.deepEqual(shape(6), [3, 3]);
+  assert.deepEqual(shape(7), [4, 3]);
+  assert.deepEqual(shape(8), [4, 4]);
+  for (const n of [1, 2, 3, 4, 5, 6, 7, 8]) {
+    assert.ok(shape(n).every(c => c <= GEOM.maxBarsPerSystem), `${n} bars per system`);
+    if (n > 1) assert.ok(shape(n).every(c => c > 1), `${n} bars has no one-bar orphan`);
   }
 });
 
@@ -125,6 +179,24 @@ test('the tab writes every note on the right string and fret', () => {
   // String 1 sits on the top line, string 6 on the bottom.
   assert.equal(tabLineY(1), GEOM.top);
   assert.equal(tabLineY(6), GEOM.bottom);
+
+  // The time signature is written above the six lines, once — inside them it
+  // would read as a fret number.
+  const svg = renderScore(notesOf(TAB_POOL), { notation: 'tab' });
+  assert.equal((svg.match(/4\/4/g) || []).length, 1);
+  assert.match(svg, /<text class="st-time" x="46" y="32"[^>]*>4\/4<\/text>/);
+  assert.match(svg, />TAB<\/text>/);
+  // Stems start on the string, not floating above the number.
+  for (const n of lay.notes) {
+    if (n.beam !== null) continue;
+    assert.ok(n.stemY < n.y - GEOM.stem, 'stem reaches above the line');
+  }
+  const stemStarts = [...svg.matchAll(/class="st-stem"[^>]*y1="([\d.]+)"/g)];
+  assert.ok(stemStarts.length > 0);
+  for (const [, y1] of stemStarts) {
+    const y = Number(y1);
+    assert.ok(lay.notes.some(n => Math.abs(y - (n.y - 1.5)) < 0.01), `stem starts at line-1.5 (${y})`);
+  }
 });
 
 test('the markup is a self-contained, accessible SVG', () => {

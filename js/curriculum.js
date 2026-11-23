@@ -195,8 +195,8 @@ export const MODULES = [
     kind: 'reading',
     itemPrefix: 'sr',   // item-stat keys: "sr:…"
     prompt: 'Play what you see',
-    howTo: 'Read the melody from the score and play it back on the keyboard, in order. Nothing plays unless you ask for it.',
-    blurb: 'Read a short melody from the page and play it back. No listening — the notes are all on the staff.',
+    howTo: 'Read the melody from the score and play it back on the keyboard, in order. No reference sound by default — turn on “Play the melody first” in Options, or hear the answer after you play.',
+    blurb: 'Read a short melody from the page and play it back. No listening — the notes are all on the page.',
     tip: 'Read by interval, not by letter: find the first note, then measure each move from the one before. Hum the line in your head before you touch a key.',
     defaults: {
       notation: 'staff', notes: 8,
