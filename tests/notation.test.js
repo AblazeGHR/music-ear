@@ -99,7 +99,7 @@ test('stems follow the middle line and eighth pairs are beamed by beat', () => {
 });
 
 test('notes never overlap and never sit on a barline', () => {
-  // Five bars: three on the first system, two on the second.
+  // Five bars at four per system: four on the first line, one on the second.
   const lay = layoutScore(notesOf(Array.from({ length: 20 }, (_, i) => 60 + (i % 2 === 0 ? 0 : 2)), 1));
   for (let i = 1; i < lay.notes.length; i++) {
     if (lay.notes[i].system !== lay.notes[i - 1].system) {
@@ -125,23 +125,47 @@ test('notes never overlap and never sit on a barline', () => {
   }
 });
 
-test('systems are balanced: at most four bars, never a one-bar orphan', () => {
-  const bars = n => layoutScore(notesOf(Array.from({ length: n * 4 }, () => 60), 1));
-  const shape = n => bars(n).systems.map(s => Math.round((s.toBeat - s.fromBeat) / GEOM.beats));
+test('bars per system is a layout option: four on desktop, two on a phone', () => {
+  const bars = (n, barsPerSystem) => layoutScore(
+    notesOf(Array.from({ length: n * 4 }, () => 60), 1),
+    barsPerSystem === undefined ? {} : { barsPerSystem },
+  );
+  const shape = (n, bps) => bars(n, bps).systems.map(s => s.bars);
+  const widthOf = s => GEOM.startX + s.bars * GEOM.beats * GEOM.beatW - 1;
 
+  // Default is four per system (unchanged on desktop).
+  assert.deepEqual(shape(8), [4, 4]);
+  assert.deepEqual(shape(8, 4), [4, 4]);
+  assert.deepEqual(shape(3), [3]);
   assert.deepEqual(shape(1), [1]);
   assert.deepEqual(shape(2), [2]);
-  // Three bars used to split into 2 + 1; now it stays on one system.
-  assert.deepEqual(shape(3), [3]);
-  assert.deepEqual(shape(4), [4]);
-  assert.deepEqual(shape(5), [3, 2]);
-  assert.deepEqual(shape(6), [3, 3]);
-  assert.deepEqual(shape(7), [4, 3]);
-  assert.deepEqual(shape(8), [4, 4]);
-  for (const n of [1, 2, 3, 4, 5, 6, 7, 8]) {
-    assert.ok(shape(n).every(c => c <= GEOM.maxBarsPerSystem), `${n} bars per system`);
-    if (n > 1) assert.ok(shape(n).every(c => c > 1), `${n} bars has no one-bar orphan`);
+
+  // Phones: two per system. Eight bars is four systems of two, full size.
+  assert.deepEqual(shape(8, 2), [2, 2, 2, 2]);
+  assert.deepEqual(shape(3, 2), [2, 1]);
+  assert.deepEqual(shape(1, 2), [1]);
+  assert.deepEqual(shape(2, 2), [2]);
+  // A one-bar system is a complete bar, not an orphan fragment.
+  const three = bars(3, 2);
+  assert.equal(three.systems[1].bars, 1);
+  assert.equal(three.systems[1].toBeat - three.systems[1].fromBeat, GEOM.beats);
+
+  // Every system's width follows its own bar count — a short last line is
+  // short, not padded to the width of the longest one.
+  for (const bps of [2, 4]) {
+    for (const n of [1, 2, 3, 4, 5, 6, 7, 8]) {
+      for (const sys of bars(n, bps).systems) {
+        assert.equal(sys.width, widthOf(sys), `${n} bars @ ${bps}: system ${sys.index}`);
+        assert.ok(sys.bars <= bps);
+      }
+    }
   }
+
+  // renderScore forwards the option all the way to the markup.
+  const four = renderScore(notesOf(Array.from({ length: 16 }, () => 60), 1));
+  assert.equal((four.match(/data-system="/g) || []).length, 1);
+  const two = renderScore(notesOf(Array.from({ length: 16 }, () => 60), 1), { barsPerSystem: 2 });
+  assert.equal((two.match(/data-system="/g) || []).length, 2);
 });
 
 test('the whole score stays inside its viewBox', () => {

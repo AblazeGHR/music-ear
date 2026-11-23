@@ -701,13 +701,17 @@ function runSession(root, cfg) {
   function renderReading() {
     userMidis = [];
     const scoreWrap = h('div', { class: 'score-wrap' });
-    // A long score (two systems of four bars) keeps its natural width on a
-    // wide screen instead of shrinking into a postage stamp.
-    const width = layoutScore(q.notes, { notation: q.notation, showNames: q.showNames }).width;
-    scoreWrap.style.maxWidth = `${Math.max(SCORE_MAX_W + 20, width + 12)}px`;
+    // Phones get two bars per line, wide screens four: the same melody, drawn
+    // at a size that can actually be read rather than scaled down to fit.
+    const barsPerSystem = (typeof window !== 'undefined' && window.innerWidth <= 520) ? 2 : 4;
+    const layout = layoutScore(q.notes, {
+      notation: q.notation, showNames: q.showNames, barsPerSystem,
+    });
+    scoreWrap.style.maxWidth = `${Math.max(SCORE_MAX_W + 20, layout.width + 12)}px`;
     scoreWrap.innerHTML = renderScore(q.notes, {
       notation: q.notation,
       showNames: q.showNames,
+      barsPerSystem,
       title: scoreTitle(),
       desc: t('A short melody written on the page. Play it back on the keyboard, in order.'),
     });

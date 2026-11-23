@@ -89,7 +89,12 @@ export const tabLineY = string => GEOM.top + (string - 1) * 8;
 
 /**
  * Lay out a melody. `notes` is [{ midi, beats }] in reading order; `opts` is
- * { notation: 'staff' | 'tab', showNames }.
+ * { notation: 'staff' | 'tab', showNames, barsPerSystem }.
+ *
+ * `barsPerSystem` is the responsive knob: four bars on a wide screen, two on a
+ * phone — the same music at a legible size instead of a shrunken four-bar line.
+ * The last system may hold fewer bars (3 bars at 2 per system → 2 + 1); a
+ * complete one-bar system is fine, only an incomplete *bar* is special.
  *
  * Returns geometry only — systems, staff/tab lines, barlines and one entry per
  * note (x, y, stem, beam group, ledger lines, fret) — so tests can assert
@@ -98,6 +103,7 @@ export const tabLineY = string => GEOM.top + (string - 1) * 8;
 export function layoutScore(notes, opts = {}) {
   const g = GEOM;
   const notation = opts.notation === 'tab' ? 'tab' : 'staff';
+  const perSystem = Math.max(1, Math.floor(Number(opts.barsPerSystem) || g.maxBarsPerSystem));
 
   const starts = [];
   let total = 0;
@@ -105,20 +111,9 @@ export function layoutScore(notes, opts = {}) {
   if (!notes.length) total = g.beats;
   const measures = Math.max(1, Math.ceil((total - 1e-9) / g.beats));
 
-  // Balance the bars across systems: four at most per system, and never a
-  // system left holding a single orphan bar (3 bars → one system, 5 → 3 + 2).
-  const systemCount = Math.ceil(measures / g.maxBarsPerSystem);
-  const barsPerSystem = [];
-  for (let left = measures, systemsLeft = systemCount; systemsLeft > 0; systemsLeft--) {
-    const take = Math.ceil(left / systemsLeft);
-    barsPerSystem.push(take);
-    left -= take;
-  }
-
   const systems = [];
-  let fromMeasure = 0;
-  for (const bars of barsPerSystem) {
-    const toMeasure = fromMeasure + bars;
+  for (let fromMeasure = 0; fromMeasure < measures; fromMeasure += perSystem) {
+    const toMeasure = Math.min(measures, fromMeasure + perSystem);
     const fromBeat = fromMeasure * g.beats;
     const toBeat = Math.min(toMeasure * g.beats, total);
     // The closing barline sits a little before the last beat position, so a
@@ -128,6 +123,7 @@ export function layoutScore(notes, opts = {}) {
       index: systems.length,
       fromBeat,
       toBeat,
+      bars: toMeasure - fromMeasure,
       top: g.top,
       bottom: g.bottom,
       endX,
@@ -136,7 +132,6 @@ export function layoutScore(notes, opts = {}) {
       width: endX + 8,
       height: g.systemH,
     });
-    fromMeasure = toMeasure;
   }
 
   // Lines and barlines, per system.
@@ -381,6 +376,7 @@ function staffSystem(sys, layout, sysTop) {
 /**
  * Render one melody to standalone SVG markup. `opts`:
  *   notation: 'staff' | 'tab'
+ *   barsPerSystem: bars per line (default 4; phones use 2)
  *   showNames: label every note with its name
  *   title / desc: accessible text (already localised by the caller)
  */
