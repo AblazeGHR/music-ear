@@ -40,6 +40,14 @@ public class PracticeService extends Service {
 
     private static volatile boolean running;
 
+    private static volatile boolean nativeActive;
+    private static volatile String lastNativeResults;
+    private static volatile String pendingNative;
+    private NativePractice nativeEngine;
+    private int nativeAnswered;
+    private int nativeCorrect;
+    private String nativeLine = "";
+
     private PowerManager.WakeLock wakeLock;
     private AudioManager audioManager;
     private AudioFocusRequest focusRequest;
@@ -74,7 +82,7 @@ public class PracticeService extends Service {
     private final Runnable beat = new Runnable() {
         @Override public void run() {
             WebView web = webRef.get();
-            if (running && web != null) {
+            if (running && web != null && !nativeActive) {
                 // resumeTimers() undoes an implicit WebView pause; the eval is
                 // the actual liveness probe and drives pending auto-advance.
                 web.resumeTimers();
@@ -120,6 +128,11 @@ public class PracticeService extends Service {
         anchorSession();
         heartbeat.removeCallbacks(beat);
         heartbeat.postDelayed(beat, 1000);
+        // The screen may have locked before the service finished starting; the
+        // payload was already handed over, so begin as soon as we are alive.
+        String pending = pendingNative;
+        pendingNative = null;
+        if (pending != null && !pending.isEmpty()) startNative(pending);
         return START_STICKY;
     }
 
@@ -138,6 +151,12 @@ public class PracticeService extends Service {
 
     @Override
     public void onDestroy() {
+        if (nativeEngine != null) {
+            lastNativeResults = nativeEngine.resultsJson();
+            nativeEngine.stop();
+            nativeEngine = null;
+        }
+        nativeActive = false;
         running = false;
         instance = null;
         heartbeat.removeCallbacks(beat);
@@ -190,12 +209,23 @@ public class PracticeService extends Service {
         Notification.Builder builder = Build.VERSION.SDK_INT >= 26
                 ? new Notification.Builder(this, CHANNEL)
                 : new Notification.Builder(this);
+        String title;
+        String text;
+        if (nativeActive) {
+            title = isChinese() ? "锁屏练习进行中" : "Screen-off practice running";
+            text = isChinese()
+                    ? "第 " + nativeLine + " 题 · 已答 " + nativeAnswered + " · 正确 " + nativeCorrect
+                    : "Question " + nativeLine + " · answered " + nativeAnswered + " · correct " + nativeCorrect;
+        } else {
+            title = isChinese() ? "语音练习进行中" : "Voice practice running";
+            text = isChinese()
+                    ? "锁屏后仍可继续 · 心跳 " + jsTicks
+                    : "Listening with the screen off · heartbeat " + jsTicks;
+        }
         return builder
                 .setSmallIcon(R.drawable.ic_practice)
-                .setContentTitle(isChinese() ? "语音练习进行中" : "Voice practice running")
-                .setContentText(isChinese()
-                        ? "锁屏后仍可继续 · 心跳 " + jsTicks
-                        : "Listening with the screen off · heartbeat " + jsTicks)
+                .setContentTitle(title)
+                .setContentText(text)
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
                 .setVisibility(Notification.VISIBILITY_PUBLIC)
@@ -266,5 +296,69 @@ public class PracticeService extends Service {
 
     public static void stop(Context context) {
         context.stopService(new Intent(context, PracticeService.class));
+    }
+
+    // ── native screen-off engine ─────────────────────────────────────────────
+
+    static boolean isNativeActive() {
+        return nativeActive;
+    }
+
+    /** Runs the pre-built queue natively; the page may be frozen from here on. */
+    static void startNative(String json) {
+        if (json == null || json.isEmpty()) return;
+        PracticeService s = instance;
+        if (s == null) {
+            pendingNative = json;
+            return;
+        }
+        lastNativeResults = null;
+        if (s.nativeEngine != null) {
+            s.nativeEngine.stop();
+            s.nativeEngine = null;
+        }
+        s.nativeAnswered = 0;
+        s.nativeCorrect = 0;
+        s.nativeLine = "1";
+        s.nativeEngine = new NativePractice(s, new NativePractice.Listener() {
+            @Override public void onProgress(int answered, int correct) {
+                s.nativeAnswered = answered;
+                s.nativeCorrect = correct;
+                s.nativeLine = String.valueOf(answered + 1);
+                s.heartbeat.post(s::updateNotification);
+            }
+
+            @Override public void onFinished(String reason) {
+                nativeActive = false;
+                if (s.nativeEngine != null) lastNativeResults = s.nativeEngine.resultsJson();
+                s.heartbeat.post(s::updateNotification);
+                // A session that ended by itself (stop command / idle timeout /
+                // error) must release the microphone and wake lock; the page
+                // picks the results up when it becomes visible.
+                if (!"resume".equals(reason)) {
+                    // Voice mode is over; release the microphone and wake lock.
+                    // The page receives the stashed results when it returns.
+                    s.heartbeat.postDelayed(s::stopSelf, 1500);
+                }
+            }
+        });
+        nativeActive = true;
+        s.nativeEngine.start(json);
+        s.updateNotification();
+    }
+
+    /** Stops the engine and returns its results (null when none ran). */
+    static String stopNative() {
+        nativeActive = false;
+        pendingNative = null;
+        PracticeService s = instance;
+        String out = lastNativeResults;
+        lastNativeResults = null;
+        if (s != null && s.nativeEngine != null) {
+            s.nativeEngine.stop();
+            out = s.nativeEngine.resultsJson();
+            s.nativeEngine = null;
+        }
+        return out;
     }
 }

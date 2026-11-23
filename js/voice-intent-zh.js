@@ -18,6 +18,16 @@ const COMMANDS = [
   { name: 'replay', phrases: ['再放一遍', '再放一次', '再来一次', '重播', '重复', '播放', '再播'] },
 ];
 
+export function commandPhrasesForZh() {
+  const out = {};
+  for (const c of COMMANDS) out[c.name] = [...c.phrases];
+  return out;
+}
+
+export function aliasesForZh(moduleId, id) {
+  return aliases(moduleId, id);
+}
+
 const PITCH = {
   up: ['更高', '高', '上升', '升高'],
   down: ['更低', '低', '下降', '降低'],

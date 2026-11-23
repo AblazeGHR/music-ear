@@ -23,6 +23,8 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
 
+import org.json.JSONObject;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.HashMap;
@@ -124,6 +126,38 @@ public class MainActivity extends Activity implements SpeechBridge.Host {
     }
 
     @Override
+    protected void onStart() {
+        // The native engine owns the microphone while the screen is off. Stop
+        // it before the page becomes visible, or both would open the recorder.
+        String nativeResults = practice != null ? practice.stopNativeMode() : null;
+
+        super.onStart();
+        if (webPaused) {
+            web.onResume();
+            webPaused = false;
+        }
+        if (nativeResults != null && !nativeResults.isEmpty()) {
+            final String quoted = JSONObject.quote(nativeResults);
+            web.post(() -> web.evaluateJavascript(
+                    "window.__nativeResults&&window.__nativeResults(" + quoted + ")", null));
+        }
+    }
+
+    @Override
+    protected void onStop() {
+        // Screen off (or the app went to the background) while voice mode is
+        // on: the WebView is about to be suspended, so the service runs the
+        // practice loop natively from the queue the page prepared earlier.
+        if (practice != null && PracticeBridge.isActive()
+                && PracticeService.isRunning() && practice.hasSession()) {
+            web.evaluateJavascript("window.__nativeTakeover&&window.__nativeTakeover()", null);
+            if (speech != null) speech.suspend();
+            practice.startNativeMode();
+        }
+        super.onStop();
+    }
+
+    @Override
     protected void onPause() {
         // With a voice session running the screen may be locked on purpose;
         // pausing the WebView here would freeze timers and question playback.
@@ -149,6 +183,7 @@ public class MainActivity extends Activity implements SpeechBridge.Host {
         web.removeJavascriptInterface("AndroidASR");
         web.removeJavascriptInterface("AndroidPractice");
         PracticeService.detachWebView(web);
+        if (practice != null) practice.stopNativeMode();
         PracticeService.stop(this);
         PracticeBridge.setActive(false);
         if (speech != null) speech.shutdown();

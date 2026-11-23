@@ -178,6 +178,24 @@ public class SpeechBridge {
         if (g != null) start(g, l);
     }
 
+    /**
+     * Hands the model over to the native screen-off engine: stop capturing and
+     * free the recogniser. The page reloads it (from the unpacked copy) when it
+     * becomes visible again.
+     */
+    void suspend() {
+        stopInternal();
+        loadSeq++;
+        preparing = false;
+        preparingLang = null;
+        pendingGrammar = null;
+        pendingLang = null;
+        synchronized (this) {
+            if (model != null) { model.close(); model = null; }
+            loadedLang = null;
+        }
+    }
+
     void shutdown() {
         stopInternal();
         synchronized (this) {

@@ -11,6 +11,7 @@ import { createRecognizer, bindPointerSurface } from './gesture.js';
 import { speakMiss, cancelSpeech, speechAvailable, spokenAnswerName } from './speech.js';
 import { voiceSupported, createVoiceController } from './voice.js';
 import { theoryName } from './i18n.js';
+import { buildScreenOffSession } from './screenoff.js';
 import { createPiano } from './piano.js';
 import { midiName } from './theory.js';
 import { track } from './analytics.js';
@@ -136,6 +137,21 @@ function runSession(root, cfg) {
     if (on) { hideHelp(); Audio.playNote(76, 0.1, 1, { lead: UI_LEAD }); }   // audible "it's on"
   }
 
+  // The Android service runs the loop natively when the screen locks; the
+  // page pre-builds the queue while it is still visible.
+  const Practice = () => (typeof window !== 'undefined' ? window.AndroidPractice : null);
+
+  function prepareNativeSession() {
+    const bridge = Practice();
+    if (!bridge || typeof bridge.prepareSession !== 'function') return;
+    try {
+      const payload = buildScreenOffSession(cfg.moduleId);
+      bridge.prepareSession(payload ? JSON.stringify(payload) : '');
+    } catch {
+      try { bridge.prepareSession(''); } catch { /* web build */ }
+    }
+  }
+
   function setVoice(on) {
     if (on && !voiceSupported()) return;
     if (on && (!q || q.kind !== 'choice')) return;
@@ -150,7 +166,10 @@ function runSession(root, cfg) {
       Audio.playNote(76, 0.1, 1, { lead: UI_LEAD });
       setVoiceStatus('Starting…');
       voice.enable();
+      prepareNativeSession();
     } else {
+      const bridge = Practice();
+      if (bridge) { try { bridge.prepareSession(''); } catch { /* web build */ } }
       voice.disable();
       setVoiceStatus('');
     }
@@ -702,10 +721,50 @@ function runSession(root, cfg) {
     try { window.AndroidPractice?.tick?.(); } catch { /* web build */ }
   };
 
+  // ── native screen-off handover ─────────────────────────────────────────────
+  // When the screen locks the service takes the loop over; the page only waits
+  // for the results (delivered when it becomes visible again).
+  window.__nativeTakeover = () => {
+    if (voiceOn) voice.pause();
+  };
+
+  window.__nativeResults = payload => {
+    let data = payload;
+    if (typeof data === 'string') {
+      try { data = JSON.parse(data); } catch { data = {}; }
+    }
+
+    let added = 0;
+    let right = 0;
+    for (const r of data?.results ?? []) {
+      if (!r || !r.itemKey) continue;
+      const ok = !!r.correct;
+      added++;
+      if (ok) right++;
+      State.recordAnswer(r.moduleId, [{ key: r.itemKey, correct: ok }], ok,
+        ok ? null : { correctId: r.answerId, answeredId: r.answeredId }, 'choice');
+    }
+    if (added) {
+      sessionN += added;
+      sessionC += right;
+      updateScore();
+    }
+
+    if (data?.stopped) {
+      setVoice(false);
+    } else if (voiceOn) {
+      voice.resume();
+      prepareNativeSession();
+    }
+    nextQuestion();
+  };
+
   nextQuestion();
 
   return () => {
     if (window.__practiceTick) delete window.__practiceTick;
+    if (window.__nativeTakeover) delete window.__nativeTakeover;
+    if (window.__nativeResults) delete window.__nativeResults;
     document.removeEventListener('keydown', onKeydown);
     hideHelp();
     unbindGestures();

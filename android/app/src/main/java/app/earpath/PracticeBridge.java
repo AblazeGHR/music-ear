@@ -22,6 +22,7 @@ public class PracticeBridge {
     private static volatile boolean active;
     private static volatile boolean pendingStart;
     private static volatile String currentLang = "en";
+    private static volatile String pendingSession = "";
     private final Activity activity;
 
     PracticeBridge(Activity activity) {
@@ -69,6 +70,31 @@ public class PracticeBridge {
         }
     }
 
+    /**
+     * The page pre-builds a native session while it is still visible: once the
+     * screen locks the WebView may be frozen and unable to generate anything.
+     */
+    @JavascriptInterface
+    public void prepareSession(String json) {
+        pendingSession = json == null ? "" : json;
+    }
+
+    boolean hasSession() {
+        return pendingSession != null && !pendingSession.isEmpty();
+    }
+
+    /** Called by the activity when the screen goes off. */
+    boolean startNativeMode() {
+        if (pendingSession.isEmpty()) return false;
+        PracticeService.startNative(pendingSession);
+        return true;
+    }
+
+    /** Called by the activity when it comes back; returns results JSON or null. */
+    String stopNativeMode() {
+        return PracticeService.stopNative();
+    }
+
     /** Called by the activity when RECORD_AUDIO is granted. */
     void onMicGranted() {
         if (!pendingStart) return;
@@ -114,6 +140,7 @@ public class PracticeBridge {
     public void stop() {
         active = false;
         pendingStart = false;
+        pendingSession = "";
         PracticeService.stop(activity);
     }
 }

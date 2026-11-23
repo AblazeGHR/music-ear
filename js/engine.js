@@ -70,6 +70,7 @@ function genPitch(mod, cfg) {
     options: ids.map(id => ({ id, label: labels[id] })),
     answerId: picked.id,
     events,
+    optionEvents: {},            // a "higher/lower" choice has no sound of its own
     play: () => playFresh(events),
     playOption: null,
     grade(answeredId) {
@@ -98,15 +99,18 @@ function genAbsolute(mod, cfg) {
   // Option previews are voiced in the question note's own octave, so a wrong
   // answer is heard as the exact note it should have been.
   const octaveBase = noteMidi - (noteMidi % 12);
+  const optionEvents = {};
+  for (const pc of cfg.items) optionEvents[pc] = [{ midi: octaveBase + pc, at: 0, dur: 0.9 }];
 
   return {
     moduleId: 'absolute', kind: 'choice', prompt: mod.prompt,
     noteMidi,
     events,
+    optionEvents,
     options: cfg.items.map(pc => ({ id: pc, label: pitchClassName(pc) })),
     answerId: picked.pc,
     play: () => playFresh(events),
-    playOption: id => playFresh([{ midi: octaveBase + id, at: 0, dur: 0.9 }]),
+    playOption: id => playFresh(optionEvents[id]),
     grade(answeredId) {
       const correct = answeredId === this.answerId;
       return {
@@ -145,6 +149,12 @@ function genInterval(mod, cfg) {
   let lastDir = picked.dir;
 
   const optionIds = [...new Set(cfg.items)];
+  // Serialisable plan for the native screen-off engine: the same events the
+  // web player schedules. `playOption` uses the generated direction.
+  const optionEvents = {};
+  for (const id of optionIds) {
+    optionEvents[id] = Audio.intervalEvents(root, INTERVALS[id].semis, picked.dir);
+  }
   const song = INTERVALS[picked.id].songs?.[picked.dir === 'd' ? 'desc' : 'asc'];
   const dirWord = { a: 'ascending', d: 'descending', h: 'harmonic' }[picked.dir];
 
@@ -152,13 +162,14 @@ function genInterval(mod, cfg) {
     moduleId: 'intervals', kind: 'choice', prompt: mod.prompt,
     dir: lastDir,
     events: Audio.intervalEvents(root, semis, lastDir),
+    optionEvents,
     options: optionIds.map(id => ({ id, label: INTERVALS[id].name, sub: INTERVALS[id].short })),
     answerId: picked.id,
     mnemonic: song && picked.dir !== 'h'
       ? `${INTERVALS[picked.id].name} ${dirWord} · think “${song}”`
       : null,
     play: () => playFresh(question.events),
-    playOption: id => playFresh(Audio.intervalEvents(root, INTERVALS[id].semis, picked.dir)),
+    playOption: id => playFresh(optionEvents[id]),
     grade(answeredId) {
       const correct = answeredId === this.answerId;
       return {
@@ -192,13 +203,18 @@ function genChord(mod, cfg) {
   // Voicing centred around middle C; top note capped near A5.
   const root = randInt(55, Math.max(55, Math.min(67, 81 - maxOffset)));
   const style = state.settings.chordStyle;
+  const events = Audio.chordEvents(root, semis, style);
+  const optionEvents = {};
+  for (const id of cfg.items) optionEvents[id] = Audio.chordEvents(root, CHORDS[id].semis, style);
 
   return {
     moduleId: 'chords', kind: 'choice', prompt: mod.prompt,
     options: cfg.items.map(id => ({ id, label: CHORDS[id].name, sub: CHORDS[id].short })),
     answerId: picked.id,
-    play: () => playFresh(Audio.chordEvents(root, semis, style)),
-    playOption: id => playFresh(Audio.chordEvents(root, CHORDS[id].semis, style)),
+    events,
+    optionEvents,
+    play: () => playFresh(events),
+    playOption: id => playFresh(optionEvents[id]),
     grade(answeredId) {
       const correct = answeredId === this.answerId;
       return {
@@ -215,13 +231,18 @@ function genChord(mod, cfg) {
 function genScale(mod, cfg) {
   const picked = pickWeighted(cfg.items.map(id => ({ id, itemKey: `sc:${id}` })));
   const root = randInt(53, 67);
+  const events = Audio.scaleEvents(root, SCALES[picked.id].semis);
+  const optionEvents = {};
+  for (const id of cfg.items) optionEvents[id] = Audio.scaleEvents(root, SCALES[id].semis);
 
   return {
     moduleId: 'scales', kind: 'choice', prompt: mod.prompt,
     options: cfg.items.map(id => ({ id, label: SCALES[id].name, sub: SCALES[id].sub })),
     answerId: picked.id,
-    play: () => playFresh(Audio.scaleEvents(root, SCALES[picked.id].semis)),
-    playOption: id => playFresh(Audio.scaleEvents(root, SCALES[id].semis)),
+    events,
+    optionEvents,
+    play: () => playFresh(events),
+    playOption: id => playFresh(optionEvents[id]),
     grade(answeredId) {
       const correct = answeredId === this.answerId;
       return {
@@ -283,18 +304,23 @@ function genDegree(mod, cfg) {
   const subOf = id => state.settings.degreeLabels === 'number'
     ? DEGREES[id].solfege : DEGREES[id].number;
 
+  const optionEvents = {};
+  for (const id of cfg.items) {
+    const candidates = [-12, 0, 12].map(o => keyRoot + DEGREES[id].semis + o);
+    const m = candidates.reduce((a, b) =>
+      Math.abs(b - noteMidi) < Math.abs(a - noteMidi) ? b : a);
+    optionEvents[id] = [{ midi: m, at: 0, dur: 1.0 }];
+  }
+
   return {
     moduleId: 'degrees', kind: 'choice', prompt: mod.prompt,
     options: cfg.items.map(id => ({ id, label: labelOf(id), sub: subOf(id) })),
     answerId: picked.id,
+    events,
+    optionEvents,
     play: () => playFresh(events),
     // Compare a degree in the same register as the question note.
-    playOption: id => {
-      const candidates = [-12, 0, 12].map(o => keyRoot + DEGREES[id].semis + o);
-      const m = candidates.reduce((a, b) =>
-        Math.abs(b - noteMidi) < Math.abs(a - noteMidi) ? b : a);
-      return playFresh([{ midi: m, at: 0, dur: 1.0 }]);
-    },
+    playOption: id => playFresh(optionEvents[id]),
     grade(answeredId) {
       const correct = answeredId === this.answerId;
       return {

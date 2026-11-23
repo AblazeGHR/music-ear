@@ -18,7 +18,7 @@
 
 import { INTERVALS, CHORDS, SCALES, DEGREES, pitchClassName } from './theory.js';
 import { ZH } from './i18n.zh.js';
-import { parseIntentZh } from './voice-intent-zh.js';
+import { parseIntentZh, commandPhrasesForZh } from './voice-intent-zh.js';
 
 const ONES = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven',
   'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen',
@@ -239,6 +239,18 @@ const COMMAND_PHRASES = [
   'replay', 'play again', 'again', 'next', 'skip', 'names', 'say the names',
   'stop listening', 'stop',
 ];
+
+const COMMAND_ALIASES = {
+  replay: ['replay', 'play again', 'again', 'repeat', 'one more time', 'play'],
+  next: ['next', 'next question', 'skip', 'move on', 'go on'],
+  names: ['names', 'say the names', 'tell me', 'what was it'],
+  stop: ['stop listening', 'stop', 'voice off', 'exit voice', 'close voice', 'turn off'],
+};
+
+/** Phrase → command table for the native screen-off engine. */
+export function commandPhrasesFor(lang) {
+  return lang === 'zh' ? commandPhrasesForZh() : COMMAND_ALIASES;
+}
 
 // ── matching ─────────────────────────────────────────────────────────────────
 

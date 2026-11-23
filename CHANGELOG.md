@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.16.0 — 2026-11-23
+
+- 🌙 **Screen-off practice no longer depends on the WebView.** The page pre-builds a 60-question queue while it is still visible (audio as MIDI event lists, options, aliases, answers), and the foreground service runs the whole loop natively: it synthesises the question with AudioTrack, listens with Vosk, grades, speaks the result (on-device TTS) and moves on. Locking the screen therefore no longer freezes playback, recognition or the question loop
+- Answers, numbers and the four commands (replay / next / names / stop listening) work with the screen off in both languages; after a miss, saying an option's name plays that option, and saying "next" moves on
+- Results are merged back into the normal statistics when the app returns; the header score reflects the questions answered while locked. The queue regenerates after each return
+- Honest limits: only multiple-choice exercises (progressions and melodies have no option grid); the native loop repeats the 60-question queue; and this still needs a real-device pass — no emulator or phone was available while building it
+
 ## 0.15.0 — 2026-11-21
 
 - ♾️ **Gesture mode no longer stops at eight options.** Every multiple-choice exercise now offers the switch — including Absolute Pitch (12), Chords (11 by default) and any widened pool. Both modes validate the counted number against the question instead of hiding the control
