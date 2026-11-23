@@ -187,6 +187,43 @@ export const MODULES = [
       { key: 'chromatic', label: 'Occasional chromatic notes', type: 'toggle' },
     ],
   },
+  {
+    id: 'reading',
+    title: 'Sight Reading',
+    icon: '♩',
+    color: 'indigo',
+    kind: 'reading',
+    itemPrefix: 'sr',   // item-stat keys: "sr:…"
+    prompt: 'Play what you see',
+    howTo: 'Read the melody from the score and play it back on the keyboard, in order. Nothing plays unless you ask for it.',
+    blurb: 'Read a short melody from the page and play it back. No listening — the notes are all on the staff.',
+    tip: 'Read by interval, not by letter: find the first note, then measure each move from the one before. Hum the line in your head before you touch a key.',
+    defaults: {
+      notation: 'staff', notes: 8,
+      rhythms: ['quarter', 'eighths'], playFirst: false, showNames: false,
+    },
+    options: [
+      {
+        key: 'notation', label: 'Notation', type: 'select',
+        choices: [['staff', 'Staff'], ['tab', 'Guitar tab']],
+      },
+      {
+        key: 'notes', label: 'Notes per melody', type: 'select', coerce: Number,
+        choices: [[4, 'Four'], [6, 'Six'], [8, 'Eight'], [12, 'Twelve'], [16, 'Sixteen']],
+      },
+      {
+        key: 'rhythms', label: 'Rhythms', type: 'chips',
+        choices: [
+          ['quarter', 'Quarter notes'],
+          ['eighths', 'Two eighths'],
+          ['dotted', 'Dotted quarter + eighth'],
+          ['half', 'Half notes'],
+        ],
+      },
+      { key: 'playFirst', label: 'Play the melody first', type: 'toggle' },
+      { key: 'showNames', label: 'Show note names', type: 'toggle' },
+    ],
+  },
 ];
 
 export const moduleById = id => MODULES.find(m => m.id === id);

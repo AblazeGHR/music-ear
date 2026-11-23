@@ -64,6 +64,37 @@ const EXTRA = {
   'Allow the app to keep running while the screen is off.':
     '允许应用在锁屏后继续运行；国产手机还需要在系统设置里关闭自动管理。',
   'Allow': '去允许',
+  // Sight reading (v0.17.0) — the ninth exercise.
+  'Sight Reading': '视奏',
+  'Play what you see': '看谱弹出旋律',
+  'Read the melody from the score and play it back on the keyboard, in order. Nothing plays unless you ask for it.':
+    '照着谱面读出旋律，在琴键上按顺序弹出。作答前不会自动发声，除非你主动播放。',
+  'Read a short melody from the page and play it back. No listening — the notes are all on the staff.':
+    '看一小段乐谱，把旋律弹出来。不靠听力——所有音符都写在谱上。',
+  'Read by interval, not by letter: find the first note, then measure each move from the one before. Hum the line in your head before you touch a key.':
+    '用音程读谱，而不是逐个认字母：先找到第一个音，再看每个音与上一个音的距离。落键前先在脑子里哼一遍。',
+  'Notation': '记谱方式',
+  'Staff': '五线谱',
+  'Guitar tab': '六线谱',
+  'Notes per melody': '每题音符数',
+  'Four': '4 个',
+  'Six': '6 个',
+  'Eight': '8 个',
+  'Twelve': '12 个',
+  'Sixteen': '16 个',
+  'Rhythms': '节奏型',
+  'Quarter notes': '四分音符',
+  'Two eighths': '两个八分音符',
+  'Dotted quarter + eighth': '附点四分音符 + 八分音符',
+  'Half notes': '二分音符',
+  'Play the melody first': '先播放参考旋律',
+  'Show note names': '显示音名',
+  '▶ Hear the answer': '▶ 听正确答案',
+  'R replay · ⏎ next · ⌫ undo': 'R 重播 · ⏎ 下一题 · ⌫ 撤销',
+  'treble staff': '五线谱（高音谱号）',
+  'guitar tab': '六线谱',
+  'A short melody written on the staff. Play it back on the keyboard, in order.':
+    '谱面上的短旋律，请在琴键上按顺序弹出。',
 };
 
 const flat = { ...ui, ...EXTRA };
@@ -102,6 +133,7 @@ for (const [table, source, zh] of tables) {
 const MANUAL_TEMPLATES = {
   'Press & hold: a tick every {ms} ms · Release after N ticks = option N · Triple-tap = off · Swipe = next · Circle = replay · 2 circles = names':
     '长按：每 {ms} 毫秒响一声 · 松手时响 N 声 = 第 N 项 · 连按三下 = 关闭 · 划直线 = 下一题 · 画圈 = 重播 · 画两圈 = 报答案',
+  'C major melody, {n} notes, {where}': 'C 大调旋律，{n} 个音符，{where}',
 };
 
 const allTemplates = { ...templates, ...MANUAL_TEMPLATES };

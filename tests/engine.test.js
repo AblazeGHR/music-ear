@@ -14,7 +14,7 @@ test('every exercise generates questions from its default configuration', () => 
       assert.ok(q, `${mod.id} produced a question`);
       assert.equal(q.moduleId, mod.id);
       assert.equal(q.kind, mod.kind);
-      if (q.kind !== 'melody') {
+      if (q.kind !== 'melody' && q.kind !== 'reading') {
         assert.ok(Array.isArray(q.options) && q.options.length > 0, `${mod.id} has options`);
       }
       assert.equal(typeof q.play, 'function');
@@ -25,6 +25,10 @@ test('every exercise generates questions from its default configuration', () => 
       }
       if (q.kind === 'sequence') assert.equal(q.slots, q.answerSeq.length);
       if (q.kind === 'melody') assert.ok(q.targetMidis.length > 0 && q.keyRange[0] < q.keyRange[1]);
+      if (q.kind === 'reading') {
+        assert.ok(q.notes.length > 0 && q.notes.length <= mod.defaults.notes, `${mod.id} notes`);
+        assert.ok(q.keyRange[0] < Math.min(...q.targetMidis) && q.keyRange[1] > Math.max(...q.targetMidis));
+      }
     }
   }
 });

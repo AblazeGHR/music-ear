@@ -198,7 +198,7 @@ test('the exercise registry is internally consistent', () => {
 
   for (const mod of MODULES) {
     assert.ok(mod.title && mod.icon && mod.blurb && mod.prompt && mod.howTo && mod.tip, `${mod.id} copy`);
-    assert.ok(['choice', 'sequence', 'melody'].includes(mod.kind), `${mod.id} kind`);
+    assert.ok(['choice', 'sequence', 'melody', 'reading'].includes(mod.kind), `${mod.id} kind`);
     assert.ok(/^[a-z]+$/.test(mod.color), `${mod.id} colour token`);
     assert.ok(mod.options.length > 0, `${mod.id} exposes options`);
 

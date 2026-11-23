@@ -10,9 +10,10 @@ import { renderOptions } from './options.js';
 import { createRecognizer, bindPointerSurface } from './gesture.js';
 import { speakMiss, cancelSpeech, speechAvailable, spokenAnswerName } from './speech.js';
 import { voiceSupported, createVoiceController } from './voice.js';
-import { theoryName } from './i18n.js';
+import { theoryName, t, translate } from './i18n.js';
 import { buildScreenOffSession } from './screenoff.js';
 import { createPiano } from './piano.js';
+import { renderScore } from './notation.js';
 import { midiName } from './theory.js';
 import { track } from './analytics.js';
 
@@ -60,6 +61,9 @@ function runSession(root, cfg) {
   // user's own trade-off.
 
   const KBD_HINT = '1–9 answer · R replay · ⏎ next · ⌫ undo';
+  // Sight reading has no answer buttons to number.
+  const TYPE_HINT = 'R replay · ⏎ next · ⌫ undo';
+  const kbdHint = () => (q?.kind === 'reading' ? TYPE_HINT : KBD_HINT);
   const gestureMode = State.state.settings.gestureMode === 'hold' ? 'hold' : 'tap';
   const holdRepeatMs = State.clampHoldRepeat(State.state.settings.holdRepeatMs);
   const TAP_HINT = 'Tap ×N = option N (after a miss: play it) · Swipe = next · Hold = off · Circle = replay · 2 circles = names';
@@ -132,7 +136,7 @@ function runSession(root, cfg) {
     shell.classList.toggle('gesture-on', on);
     gestureBtn.classList.toggle('on', on);
     gestureBtn.setAttribute('aria-checked', String(on));
-    kbdEl.textContent = on ? gestureHint() : KBD_HINT;
+    kbdEl.textContent = on ? gestureHint() : kbdHint();
     recognizer.reset();
     if (on) { hideHelp(); Audio.playNote(76, 0.1, 1, { lead: UI_LEAD }); }   // audible "it's on"
   }
@@ -412,9 +416,17 @@ function runSession(root, cfg) {
     howToEl.textContent = mod.howTo || '';
     renderAnswers();
     updateScore();
+    if (!gestureOn) kbdEl.textContent = kbdHint();
     syncGestureAffordance();
     syncVoiceAffordance();
-    if (everPlayed) playQ();
+    if (q.kind === 'reading') {
+      // The question is on the page: there is nothing to wait for, and the
+      // score must never be dimmed. Sound only if the user asked for it.
+      everPlayed = true;
+      playBtn.classList.toggle('hidden', !q.autoPlay);
+      if (q.autoPlay) playQ();
+      else shell.classList.remove('awaiting-play');
+    } else if (everPlayed) playQ();
     else {
       shell.classList.add('awaiting-play');
       // A spoken "next" before the first play leaves the grammar from the
@@ -469,6 +481,7 @@ function runSession(root, cfg) {
   function renderAnswers() {
     if (q.kind === 'choice') renderChoice();
     else if (q.kind === 'sequence') renderSequence();
+    else if (q.kind === 'reading') renderReading();
     else renderMelody();
   }
 
@@ -677,6 +690,70 @@ function runSession(root, cfg) {
     });
   }
 
+  // sight reading (score → keyboard) ─────────────────────────────────────────
+  // The score replaces the "listen first" stage: it is the question. Nothing
+  // sounds until the user asks, and the answer is played back on the keyboard.
+  function scoreTitle() {
+    const where = q.notation === 'tab' ? t('guitar tab') : t('treble staff');
+    return translate(`C major melody, ${q.notes.length} notes, ${where}`);
+  }
+
+  function renderReading() {
+    userMidis = [];
+    const scoreWrap = h('div', { class: 'score-wrap' });
+    scoreWrap.innerHTML = renderScore(q.notes, {
+      notation: q.notation,
+      showNames: q.showNames,
+      title: scoreTitle(),
+      desc: t('A short melody written on the staff. Play it back on the keyboard, in order.'),
+    });
+
+    slotEls = q.targetMidis.map(() => h('div', { class: 'slot note' }, '·'));
+
+    const pianoWrap = h('div', { class: 'piano-wrap' });
+    answersEl.append(
+      scoreWrap,
+      h('div', { class: 'slots tight' }, slotEls),
+      pianoWrap,
+      h('div', { class: 'seq-tools' },
+        h('button', { class: 'btn small', onclick: undoNote }, '⌫ Undo')));
+
+    piano = createPiano(pianoWrap, q.keyRange[0], q.keyRange[1], {
+      tonic: q.tonicMidi,
+      onKey: midi => {
+        if (answered) return;
+        if (userMidis.length >= q.targetMidis.length) return;
+        userMidis.push(midi);
+        const i = userMidis.length - 1;
+        slotEls[i].textContent = midiName(midi);
+        slotEls[i].classList.add('filled');
+        if (userMidis.length === q.targetMidis.length) submitReading();
+      },
+    });
+  }
+
+  function submitReading() {
+    const result = q.grade(userMidis);
+    piano.setEnabled(false);
+    for (let i = 0; i < q.targetMidis.length; i++) {
+      slotEls[i].classList.add(userMidis[i] === q.targetMidis[i] ? 'good' : 'bad');
+    }
+    // Mark the score itself, so a wrong note is visible where it was read.
+    answersEl.querySelectorAll('.snote').forEach(el => {
+      const i = Number(el.getAttribute('data-note'));
+      el.classList.add(userMidis[i] === q.targetMidis[i] ? 'good' : 'bad');
+    });
+
+    const extra = [];
+    if (!result.correct) {
+      extra.push(h('div', { class: 'fb-detail' },
+        `Answer: ${q.targetMidis.map(midiName).join(' ')}`));
+    }
+    extra.push(h('div', { class: 'fb-compare' },
+      h('button', { class: 'btn small', onclick: () => q.playMelodyOnly() }, '▶ Hear the answer')));
+    finishAnswer(result, extra);
+  }
+
   // ── keyboard shortcuts ─────────────────────────────────────────────────────
   function onKeydown(e) {
     if (gestureOn) return;   // eyes-closed mode: gestures are the only input
@@ -691,12 +768,12 @@ function runSession(root, cfg) {
     }
     if (e.key === 'Backspace') {
       if (q?.kind === 'sequence') { e.preventDefault(); undoSlot(); }
-      if (q?.kind === 'melody') { e.preventDefault(); undoNote(); }
+      if (q?.kind === 'melody' || q?.kind === 'reading') { e.preventDefault(); undoNote(); }
       return;
     }
     if (/^[0-9]$/.test(e.key)) {
       const idx = e.key === '0' ? 9 : Number(e.key) - 1;
-      if (!q?.options[idx]) return;
+      if (!q?.options || !q.options[idx]) return;
       Audio.unlock();
       if (q.kind === 'choice') {
         if (!answered) answerChoice(q.options[idx].id);

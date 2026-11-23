@@ -39,6 +39,7 @@
   --c-cyan: #22d3ee;
   --c-fuchsia: #e879f9;
   --c-lime: #a3e635;
+  --c-indigo: #818cf8;
 
   --radius: 14px;
   --font: 'Outfit', system-ui, -apple-system, 'Segoe UI', sans-serif;
@@ -223,6 +224,9 @@ button:focus-visible, a:focus-visible, select:focus-visible {
   overflow-y: auto;
 }
 .overlay.hidden { display: none; }
+
+/* Generic: any control the session hides for a question kind. */
+.hidden { display: none !important; }
 
 @keyframes pop-in {
   from { transform: scale(0.7); opacity: 0; }
@@ -559,6 +563,36 @@ button:focus-visible, a:focus-visible, select:focus-visible {
 .slot.good { border-color: var(--good); color: var(--good); border-style: solid; }
 .slot.bad { border-color: var(--bad); color: var(--bad); border-style: solid; }
 .seq-tools { display: flex; justify-content: center; margin-top: 0.7rem; }
+/* Sight reading shows up to sixteen short note names: keep eight on one row. */
+.slots.tight { gap: 0.3rem; }
+.slots.tight .slot { min-width: 38px; height: 42px; font-size: 0.9rem; padding: 0 0.3rem; }
+
+/* ── sight reading: the score panel ── */
+.score-wrap {
+  max-width: 360px;
+  margin-left: auto;
+  margin-right: auto;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin-bottom: 0.9rem;
+  padding: 0.35rem 0.25rem 0.3rem;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 75%, transparent);
+}
+.score-svg { display: block; margin: 0 auto; color: var(--text); }
+.score-svg .st-line, .score-svg .st-ledger {
+  stroke: color-mix(in srgb, var(--text) 42%, transparent);
+}
+.score-svg .st-ledger { stroke-width: 1.4; }
+.score-svg .st-bar { stroke: color-mix(in srgb, var(--text) 60%, transparent); }
+.score-svg .st-stem, .score-svg .st-flag, .score-svg .st-beam { stroke: currentColor; }
+.score-svg .st-clef { color: color-mix(in srgb, var(--text) 88%, transparent); }
+.score-svg .snote.bad { color: var(--bad); }
+.score-svg .snote.good { color: var(--good); }
+@media (max-width: 480px) {
+  .score-wrap { max-width: 100%; }
+}
 
 /* ── piano ── */
 .piano-wrap { padding-bottom: 4px; }

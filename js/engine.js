@@ -17,6 +17,7 @@ import {
 } from './theory.js';
 import { moduleById } from './curriculum.js';
 import { state, itemWeight } from './state.js';
+import * as Reading from './reading.js';
 
 let lastItemKey = null;
 
@@ -46,6 +47,7 @@ export function generate(moduleId, cfg) {
     case 'degrees': return genDegree(mod, cfg);
     case 'progressions': return genProgression(mod, cfg);
     case 'melodies': return genMelody(mod, cfg);
+    case 'reading': return Reading.generate(mod, cfg);
   }
 }
 
