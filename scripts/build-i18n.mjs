@@ -95,6 +95,21 @@ const EXTRA = {
   'guitar tab': '六线谱',
   'A short melody written on the page. Play it back on the keyboard, in order.':
     '谱面上的短旋律，请在琴键上按顺序弹出。',
+  'Clear': '清除',
+  'Show on piano': '在钢琴上显示',
+  'Correct': '正确',
+  'Not quite': '还不对',
+  'Undo': '撤销',
+  'Names': '报答案',
+  'Your pick': '你的选择',
+  'Answer': '正确答案',
+  'Sing. Seriously.': '唱出来，认真唱。',
+  'When you miss, compare.': '答错时，对比着听。',
+  'Feeling stuck? Narrow the pool.': '卡住了？缩小范围。',
+  'Privacy: no analytics, no network calls beyond loading this page. Feedback you submit through the Feedback button is read by a human.':
+    '隐私：没有分析统计，除加载本页外没有网络请求。通过反馈按钮提交的内容由人阅读。',
+  'after a wrong answer, speaks your pick and then the real one — the Names button does the same':
+    '答错后先说你选的、再说正确答案——“报答案”按钮同理',
 };
 
 const flat = { ...ui, ...EXTRA };

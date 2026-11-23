@@ -1,5 +1,5 @@
 // sw.js — offline support: network-first with cache fallback.
-const CACHE = 'earpath-v34';
+const CACHE = 'earpath-v35';
 const ASSETS = [
   './',
   './index.html',
@@ -19,6 +19,7 @@ const ASSETS = [
   './js/gesture.js',
   './js/options.js',
   './js/session.js',
+  './js/icons.js',
   './js/speech.js',
   './js/voice.js',
   './js/voice-intent.js',

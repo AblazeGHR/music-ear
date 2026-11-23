@@ -8,6 +8,7 @@ import { INTERVALS, CHORDS, SCALES, DEGREES, pitchClassName } from './theory.js'
 import { track } from './analytics.js';
 import { APP_VERSION, REPO_URL } from './config.js';
 import { language, isLanguageFixed, theoryName } from './i18n.js';
+import { iconEl } from './icons.js';
 
 // ── shared chrome ─────────────────────────────────────────────────────────────
 
@@ -15,7 +16,7 @@ function topbar(active = '') {
   const link = (route, label, key) =>
     h('a', { class: 'nav-link' + (active === key ? ' active' : ''), href: route }, label);
   return h('header', { class: 'topbar' },
-    h('a', { class: 'logo', href: '#/' }, h('span', { class: 'logo-mark' }, '◖♪'), 'earpath'),
+    h('a', { class: 'logo', href: '#/' }, h('span', { class: 'logo-mark' }, iconEl('audio-lines')), 'earpath'),
     h('nav', { class: 'nav' },
       link('#/guide', 'Guide', 'guide'),
       link('#/stats', 'Stats', 'stats'),
@@ -39,7 +40,7 @@ export function renderHome(root) {
           onclick: () => go(`#/practice/${mod.id}`),
         },
           h('div', { class: 'mc-head' },
-            h('span', { class: 'mc-icon' }, mod.icon),
+            h('span', { class: 'mc-icon' }, iconEl(mod.icon)),
             h('span', { class: 'mc-title' }, mod.title),
             ms.a > 0
               ? h('span', { class: 'mc-count' }, `${fmtPct(ms.c, ms.a)} · ${ms.a}`)
@@ -61,7 +62,7 @@ export function renderHome(root) {
 
 function statCard(icon, big, label, sub) {
   return h('div', { class: 'card stat-card' },
-    h('div', { class: 'sc-icon' }, icon),
+    h('div', { class: 'sc-icon' }, iconEl(icon)),
     h('div', { class: 'sc-big' }, big),
     h('div', { class: 'sc-label' }, label),
     sub ? h('div', { class: 'tiny muted' }, sub) : null);
@@ -133,15 +134,15 @@ export function renderStats(root, focusModuleId = null) {
     if (!ms.a) {
       return h('button', {
         class: 'btn small danger', disabled: '', title: 'No data recorded for this exercise yet',
-      }, '🗑 Clear');
+      }, iconEl('trash-2'), h('span', {}, 'Clear'));
     }
-    const btn = h('button', { class: 'btn small danger' });
+    const clearLabel = h('span', {}, 'Clear');
+    const btn = h('button', { class: 'btn small danger' }, iconEl('trash-2'), clearLabel);
     let timer = null;
     const disarm = () => {
       btn.classList.remove('armed');
-      btn.textContent = '🗑 Clear';
+      clearLabel.textContent = 'Clear';
     };
-    btn.textContent = '🗑 Clear';
     btn.addEventListener('click', () => {
       if (btn.classList.contains('armed')) {
         clearTimeout(timer);
@@ -152,7 +153,7 @@ export function renderStats(root, focusModuleId = null) {
         return;
       }
       btn.classList.add('armed');
-      btn.textContent = `Clear ${ms.a} answers? Tap again`;
+      clearLabel.textContent = `Clear ${ms.a} answers? Tap again`;
       timer = setTimeout(disarm, 4000);
     });
     return btn;
@@ -164,9 +165,9 @@ export function renderStats(root, focusModuleId = null) {
     topbar('stats'),
     h('h1', {}, 'Your progress'),
     h('div', { class: 'stat-cards' },
-      statCard('🎯', fmtPct(s.totals.c, s.totals.a), 'accuracy', `${s.totals.a} answers`),
-      statCard('✓', String(s.totals.c), 'correct', ''),
-      statCard('◖♪', `${practiced}/${MODULES.length}`, 'exercises tried', '')),
+      statCard('target', fmtPct(s.totals.c, s.totals.a), 'accuracy', `${s.totals.a} answers`),
+      statCard('check', String(s.totals.c), 'correct', ''),
+      statCard('layers', `${practiced}/${MODULES.length}`, 'exercises tried', '')),
 
     h('h2', {}, 'Exercises'),
     h('div', { class: 'stat-modules' },
@@ -175,7 +176,7 @@ export function renderStats(root, focusModuleId = null) {
         const breakdown = State.answerBreakdown(mod.id);
         const det = h('details', { class: 'stat-mod card', style: { '--mc': `var(--c-${mod.color})` } },
           h('summary', { class: 'sm-sum' },
-            h('span', { class: 'mc-icon' }, mod.icon),
+            h('span', { class: 'mc-icon' }, iconEl(mod.icon)),
             h('div', { class: 'sm-main' },
               h('div', { class: 'sm-title' }, mod.title),
               h('div', { class: 'sm-bar' },
@@ -427,19 +428,19 @@ export function renderGuide(root) {
     h('h1', {}, 'How to get better, faster'),
     h('p', {}, 'Ear training is a physical skill, like balance. It responds to ', h('strong', {}, 'short, frequent practice'), ' — five focused minutes a day beats an hour on Sunday. Use each exercise’s Options to keep the pool just outside your comfort zone.'),
     h('div', { class: 'card tipcard' },
-      h('h3', {}, '🎤 Sing. Seriously.'),
+      h('h3', {}, iconEl('mic'), 'Sing. Seriously.'),
       h('p', {}, 'The single biggest accelerator. Hum or sing what you hear before you answer — intervals, the notes of a chord, melodies. Connecting your voice to your ear builds the skill twice as fast. Nobody can hear you.')),
     h('div', { class: 'card tipcard' },
-      h('h3', {}, '🧭 When you miss, compare.'),
+      h('h3', {}, iconEl('compass'), 'When you miss, compare.'),
       h('p', {}, 'After a wrong answer, use the “Your pick / Answer” buttons to hear both back-to-back. The difference between what you thought and what it was is exactly where your ear grows.')),
     h('div', { class: 'card tipcard' },
-      h('h3', {}, '🌱 Feeling stuck? Narrow the pool.'),
+      h('h3', {}, iconEl('sprout'), 'Feeling stuck? Narrow the pool.'),
       h('p', {}, 'Drop the hardest items from an exercise’s Options for a day to rebuild confidence, or switch exercises — skills cross-pollinate. Scale-degree work makes intervals easier, and vice versa.')),
 
     h('h2', {}, 'Listening strategies by exercise'),
     MODULES.map(mod =>
       h('div', { class: 'card tipcard', style: { '--mc': `var(--c-${mod.color})` } },
-        h('h3', {}, `${mod.icon} ${mod.title}`),
+        h('h3', {}, iconEl(mod.icon), mod.title),
         h('p', {}, mod.tip))),
 
     h('h2', {}, 'Interval reference songs'),
@@ -454,7 +455,7 @@ export function renderGuide(root) {
       h('a', { href: REPO_URL, target: '_blank', rel: 'noopener' }, 'Source on GitHub'),
       '.'),
     h('p', { class: 'muted' },
-      'Privacy: no analytics, no network calls beyond loading this page. Feedback you submit through the 💬 button is read by a human.'));
+      'Privacy: no analytics, no network calls beyond loading this page. Feedback you submit through the Feedback button is read by a human.'));
 
   root.append(page);
   return () => {};

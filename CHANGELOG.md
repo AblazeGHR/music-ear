@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.18.0 — 2026-11-24
+
+- 🎨 **Visual refresh, without changing the layout.** The emoji/character icons are replaced by bundled Lucide line icons (ISC) — module cards, the header controls, stats, guide, feedback moods, play/replay, undo, names and correct/incorrect feedback all share one visual language. A small gradient brand tile replaces the old text glyph
+- **Glass and depth:** the top bar and exercise header are sticky with a soft blur; cards get a subtle top glow, a lighter border and a real shadow; module icons sit in per-exercise gradient tiles; primary buttons use a gentle accent gradient; the piano keys get a lip/shadow and a pressed state. All new assets are local (no network)
+- ⏭ **Skip before answering.** Every exercise now shows a quiet secondary **Next →** while the question is unanswered. It moves on without recording an answer or touching the score; after answering it is replaced by the primary Next. Gesture and voice skip still work as before
+- The empty score pill is hidden, and a non-choice exercise (melodies, sight reading) keeps its single remaining tool beside the title instead of on a lone empty row
+- No gameification: no levels, streaks, unlocks or celebration screens were added
+
 ## 0.17.0 — 2026-11-23
 
 - 𝄞 **Ninth exercise: Sight Reading.** A short melody is written on the page and you play it back on the keyboard, in order — no listening involved. It sits on the home grid beside the other eight, with no levels or unlock of any kind

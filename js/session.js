@@ -12,6 +12,7 @@ import { speakMiss, cancelSpeech, speechAvailable, spokenAnswerName } from './sp
 import { voiceSupported, createVoiceController } from './voice.js';
 import { theoryName, t, translate } from './i18n.js';
 import { buildScreenOffSession } from './screenoff.js';
+import { iconEl } from './icons.js';
 import { createPiano } from './piano.js';
 import { renderScore, layoutScore, SCORE_MAX_W } from './notation.js';
 import { midiName } from './theory.js';
@@ -44,7 +45,8 @@ function runSession(root, cfg) {
   let optionBtns = [];
 
   // ── static shell ───────────────────────────────────────────────────────────
-  const playBtn = h('button', { class: 'playbtn', 'aria-label': 'Play / replay', onclick: () => playQ() }, '▶');
+  const playBtn = h('button', { class: 'playbtn', 'aria-label': 'Play / replay', onclick: () => playQ() }, iconEl('play'));
+  const setPlayIcon = name => playBtn.replaceChildren(iconEl(name));
   const promptEl = h('div', { class: 's-prompt' });
   const howToEl = h('div', { class: 's-howto' });
   const answersEl = h('div', { class: 's-answers' });
@@ -77,20 +79,20 @@ function runSession(root, cfg) {
   const gestureBtn = h('button', {
     class: 'gesture-switch', role: 'switch', 'aria-checked': 'false',
     onclick: () => setGesture(!gestureOn),
-  }, 'Gesture');
+  }, iconEl('hand'), h('span', {}, 'Gesture'));
   const voiceBtn = h('button', {
     class: 'gesture-switch voice-switch', role: 'switch', 'aria-checked': 'false',
     title: 'Answer by voice', 'aria-label': 'Answer by voice',
     onclick: () => setVoice(!voiceOn),
-  }, '🎙');
+  }, iconEl('mic'));
   const helpBtn = h('button', {
     class: 'gesture-help-btn', 'aria-label': 'How gestures map to the buttons', title: 'How gestures map to the buttons',
     onclick: () => showHelp(),
-  }, '?');
+  }, iconEl('circle-help'));
   const statsBtn = h('button', {
     class: 'iconbtn', 'aria-label': 'This exercise in your stats', title: 'This exercise in your stats',
     onclick: () => go(`#/stats/${cfg.moduleId}`),
-  }, '📊');
+  }, iconEl('chart-no-axes-column'));
   const kbdEl = h('div', { class: 's-kbd' }, KBD_HINT);
   const overlay = h('div', { class: 'gesture-overlay' });
   const voiceText = h('span', { class: 'v-text' });
@@ -221,13 +223,13 @@ function runSession(root, cfg) {
             ghRow('Tap three times', 'turns gesture mode off'),
             ghRow('Swipe a line', 'Next → — or skip the question if you have not answered'),
             ghRow('Draw a circle', '▶ Play / replay — after a wrong answer it plays your pick, then the real one'),
-            ghRow('Circle twice', 'after a wrong answer, speaks your pick and then the real one — the 🔊 Names button does the same'),
+            ghRow('Circle twice', 'after a wrong answer, speaks your pick and then the real one — the Names button does the same'),
           ] : [
             ghRow('Tap once', 'the 1st answer button'),
             ghRow('Tap N times', 'the Nth answer button — a tick plays on every tap so you can count with your eyes closed. After a miss it plays that option instead'),
             ghRow('Swipe a line', 'Next → — or skip the question if you have not answered'),
             ghRow('Draw a circle', '▶ Play / replay — after a wrong answer it plays your pick, then the real one'),
-            ghRow('Circle twice', 'after a wrong answer, speaks your pick and then the real one — the 🔊 Names button does the same'),
+            ghRow('Circle twice', 'after a wrong answer, speaks your pick and then the real one — the Names button does the same'),
             ghRow('Long press', 'turns gesture mode off'),
           ]),
         h('p', { class: 'tiny muted' }, 'A wrong answer plays your pick and then the real one, so the comparison needs no buttons. Everything else — back, Options, keyboard — stays locked until the switch is off.'),
@@ -257,12 +259,25 @@ function runSession(root, cfg) {
     if (!eligible && gestureOn) setGesture(false);
   }
 
+  // On a phone the tools normally take their own row. When only one control is
+  // left (sight reading has no voice/gesture/help), keep it beside the title
+  // instead of leaving a lone button on an otherwise empty row.
+  function syncToolRow() {
+    const tools = shell.querySelector('.s-tools');
+    if (!tools) return;
+    const visible = [...tools.children].filter(el => {
+      if (el.classList.contains('hidden')) return false;
+      return getComputedStyle(el).display !== 'none';
+    }).length;
+    tools.classList.toggle('slim', visible <= 1);
+  }
+
   const shell = h('div', { class: 'session', style: { '--mc': `var(--c-${cfg.color})` } },
     h('header', { class: 's-head' },
       h('button', {
         class: 'iconbtn', 'aria-label': 'Back',
         onclick: () => go('#/'),
-      }, '←'),
+      }, iconEl('arrow-left')),
       h('div', { class: 's-title' },
         h('div', {}, cfg.title),
         h('div', { class: 's-sub' }, cfg.blurb)),
@@ -388,7 +403,7 @@ function runSession(root, cfg) {
       playBtn.classList.remove('playing');
       if (holdVoice) voice.resume();
     }
-    playBtn.textContent = '↻';
+    setPlayIcon('rotate-ccw');
   }
 
   function clearAuto() {
@@ -411,14 +426,21 @@ function runSession(root, cfg) {
     feedbackEl.innerHTML = '';
     actionsEl.innerHTML = '';
     answersEl.innerHTML = '';
-    playBtn.textContent = '▶';
+    setPlayIcon('play');
     promptEl.textContent = q.prompt;
     howToEl.textContent = mod.howTo || '';
     renderAnswers();
+    // Before answering, Next is a quiet skip: no score, no stats, just a new
+    // question. After answering, finishAnswer replaces it with the primary Next.
+    if (!answered) {
+      actionsEl.append(h('button', { class: 'btn ghost skip-btn', onclick: () => nextQuestion() },
+        h('span', {}, 'Next →')));
+    }
     updateScore();
     if (!gestureOn) kbdEl.textContent = kbdHint();
     syncGestureAffordance();
     syncVoiceAffordance();
+    syncToolRow();
     if (q.kind === 'reading') {
       // The question is on the page: there is nothing to wait for, and the
       // score must never be dimmed. Sound only if the user asked for it.
@@ -456,6 +478,7 @@ function runSession(root, cfg) {
       }
     }
 
+    actionsEl.innerHTML = '';
     const nextBtn = h('button', { class: 'btn primary', onclick: nextQuestion }, 'Next →');
     actionsEl.append(nextBtn);
     if (result.correct && State.state.settings.autoAdvance) {
@@ -472,7 +495,9 @@ function runSession(root, cfg) {
   function renderFeedback(result, extra = []) {
     feedbackEl.innerHTML = '';
     const box = h('div', { class: `fb ${result.correct ? 'good' : 'bad'}` });
-    box.append(h('div', { class: 'fb-line' }, result.correct ? '✓ Correct' : '✗ Not quite'));
+    box.append(h('div', { class: 'fb-line' },
+      iconEl(result.correct ? 'check' : 'x'),
+      h('span', {}, result.correct ? 'Correct' : 'Not quite')));
     for (const node of extra) box.append(node);
     feedbackEl.append(box);
   }
@@ -542,8 +567,8 @@ function runSession(root, cfg) {
       const compareBtns = [];
       if (q.playOption) {
         compareBtns.push(
-          h('button', { class: 'btn small', onclick: () => auditionChoice(id) }, '▶ Your pick'),
-          h('button', { class: 'btn small', onclick: () => auditionChoice(q.answerId) }, '▶ Answer'));
+          h('button', { class: 'btn small', onclick: () => auditionChoice(id) }, iconEl('play'), h('span', {}, 'Your pick')),
+          h('button', { class: 'btn small', onclick: () => auditionChoice(q.answerId) }, iconEl('play'), h('span', {}, 'Answer')));
       }
       // The button equivalent of the two-circle gesture: speak the names.
       // Hidden when the platform has no speech engine or the names are unknown.
@@ -553,7 +578,7 @@ function runSession(root, cfg) {
           class: 'btn small',
           title: 'Speak the answer names',
           onclick: () => { Audio.stopAll(); speakMiss(cfg.moduleId, id, q.answerId); },
-        }, '🔊 Names'));
+        }, iconEl('volume-2'), h('span', {}, 'Names')));
       }
       if (compareBtns.length) extra.push(h('div', { class: 'fb-compare' }, ...compareBtns));
     } else {
@@ -581,7 +606,7 @@ function runSession(root, cfg) {
       h('div', { class: 'slots' }, slotEls),
       h('div', { class: 'opt-grid numerals' }, optionBtns),
       h('div', { class: 'seq-tools' },
-        h('button', { class: 'btn small', onclick: undoSlot }, '⌫ Undo')));
+        h('button', { class: 'btn small', onclick: undoSlot }, iconEl('undo-2'), h('span', {}, 'Undo'))));
   }
 
   function fillSlot(id) {
@@ -636,7 +661,7 @@ function runSession(root, cfg) {
       h('div', { class: 'slots' }, slotEls),
       pianoWrap,
       h('div', { class: 'seq-tools' },
-        h('button', { class: 'btn small', onclick: undoNote }, '⌫ Undo')));
+        h('button', { class: 'btn small', onclick: undoNote }, iconEl('undo-2'), h('span', {}, 'Undo'))));
 
     piano = createPiano(pianoWrap, q.keyRange[0], q.keyRange[1], {
       tonic: q.tonicMidi,
@@ -676,7 +701,7 @@ function runSession(root, cfg) {
         `Answer: ${q.targetMidis.map(midiName).join(' ')}`));
       extra.push(h('div', { class: 'fb-compare' },
         h('button', { class: 'btn small', onclick: () => q.playMelodyOnly() }, '▶ Melody'),
-        h('button', { class: 'btn small', onclick: showOnPiano }, '👆 Show on piano')));
+        h('button', { class: 'btn small', onclick: showOnPiano }, iconEl('piano'), h('span', {}, 'Show on piano'))));
     }
     finishAnswer(result, extra);
   }
@@ -724,7 +749,7 @@ function runSession(root, cfg) {
       h('div', { class: 'slots tight' }, slotEls),
       pianoWrap,
       h('div', { class: 'seq-tools' },
-        h('button', { class: 'btn small', onclick: undoNote }, '⌫ Undo')));
+        h('button', { class: 'btn small', onclick: undoNote }, iconEl('undo-2'), h('span', {}, 'Undo'))));
 
     piano = createPiano(pianoWrap, q.keyRange[0], q.keyRange[1], {
       tonic: q.tonicMidi,

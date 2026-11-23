@@ -31,7 +31,7 @@ export const MODULES = [
   {
     id: 'pitch',
     title: 'Pitch',
-    icon: '⇅',
+    icon: 'arrow-up-down',
     color: 'sky',
     kind: 'choice',
     itemPrefix: 'pi',   // item-stat keys: "pi:…"
@@ -48,7 +48,7 @@ export const MODULES = [
   {
     id: 'absolute',
     title: 'Absolute Pitch',
-    icon: '♯',
+    icon: 'hash',
     color: 'lime',
     kind: 'choice',
     itemPrefix: 'ap',   // item-stat keys: "ap:…"
@@ -65,7 +65,7 @@ export const MODULES = [
   {
     id: 'intervals',
     title: 'Intervals',
-    icon: '⌒',
+    icon: 'ruler',
     color: 'violet',
     kind: 'choice',
     itemPrefix: 'iv',   // item-stat keys: "iv:…"
@@ -85,7 +85,7 @@ export const MODULES = [
   {
     id: 'chords',
     title: 'Chords',
-    icon: '♬',
+    icon: 'layers',
     color: 'amber',
     kind: 'choice',
     itemPrefix: 'ch',   // item-stat keys: "ch:…"
@@ -101,7 +101,7 @@ export const MODULES = [
   {
     id: 'scales',
     title: 'Scales & Modes',
-    icon: '𝄚',
+    icon: 'list-music',
     color: 'emerald',
     kind: 'choice',
     itemPrefix: 'sc',   // item-stat keys: "sc:…"
@@ -117,7 +117,7 @@ export const MODULES = [
   {
     id: 'degrees',
     title: 'Scale Degrees',
-    icon: '◉',
+    icon: 'target',
     color: 'rose',
     kind: 'choice',
     itemPrefix: 'dg',   // item-stat keys: "dg:…"
@@ -138,7 +138,7 @@ export const MODULES = [
   {
     id: 'progressions',
     title: 'Progressions',
-    icon: '⛓',
+    icon: 'git-branch',
     color: 'cyan',
     kind: 'sequence',
     itemPrefix: 'pg',   // item-stat keys: "pg:…"
@@ -163,7 +163,7 @@ export const MODULES = [
   {
     id: 'melodies',
     title: 'Melodies',
-    icon: '♪',
+    icon: 'audio-lines',
     color: 'fuchsia',
     kind: 'melody',
     itemPrefix: 'ml',   // item-stat keys: "ml:…"
@@ -190,7 +190,7 @@ export const MODULES = [
   {
     id: 'reading',
     title: 'Sight Reading',
-    icon: '♩',
+    icon: 'book-open',
     color: 'indigo',
     kind: 'reading',
     itemPrefix: 'sr',   // item-stat keys: "sr:…"

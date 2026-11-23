@@ -7,6 +7,7 @@
 import { h } from './ui.js';
 import { track, analyticsEnabled } from './analytics.js';
 import { REPO_URL, FEEDBACK_EMAIL, APP_VERSION } from './config.js';
+import { iconEl } from './icons.js';
 
 let fab = null;
 
@@ -15,7 +16,7 @@ export function mountFeedback() {
     class: 'feedback-fab',
     'aria-label': 'Send feedback',
     onclick: openModal,
-  }, '💬', h('span', { class: 'fab-label' }, 'Feedback'));
+  }, iconEl('message-circle'), h('span', { class: 'fab-label' }, 'Feedback'));
   document.body.append(fab);
 }
 
@@ -38,7 +39,7 @@ function openModal() {
   });
   const status = h('div', { class: 'fb-status' });
 
-  const moods = [['😞', 'rough'], ['😐', 'okay'], ['😄', 'great']].map(([emoji, val]) =>
+  const moods = [['frown', 'rough'], ['meh', 'okay'], ['smile', 'great']].map(([icon, val]) =>
     h('button', {
       class: 'mood',
       'aria-label': val,
@@ -47,7 +48,7 @@ function openModal() {
         overlay.querySelectorAll('.mood').forEach(b => b.classList.remove('on'));
         e.currentTarget.classList.add('on');
       },
-    }, emoji));
+    }, iconEl(icon)));
 
   const issueUrl = () =>
     `${REPO_URL}/issues/new?title=${encodeURIComponent('Feedback')}` +
