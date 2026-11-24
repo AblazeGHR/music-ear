@@ -68,8 +68,8 @@ function runSession(root, cfg) {
   const kbdHint = () => (q?.kind === 'reading' ? TYPE_HINT : KBD_HINT);
   const gestureMode = State.state.settings.gestureMode === 'hold' ? 'hold' : 'tap';
   const holdRepeatMs = State.clampHoldRepeat(State.state.settings.holdRepeatMs);
-  const TAP_HINT = 'Tap ×N = option N (after a miss: play it) · Swipe = next · Hold = off · Circle = replay · 2 circles = names';
-  const HOLD_HINT = `Press & hold: a tick every ${holdRepeatMs} ms · Release after N ticks = option N · Triple-tap = off · Swipe = next · Circle = replay · 2 circles = names`;
+  const TAP_HINT = 'Tap ×N = option N (after a miss: play it) · Swipe = next · Hold = off · Back & forth = replay · twice = names';
+  const HOLD_HINT = `Press & hold: a tick every ${holdRepeatMs} ms · Release after N ticks = option N · Triple-tap = off · Swipe = next · Back & forth = replay · twice = names`;
   const gestureHint = () => (gestureMode === 'hold' ? HOLD_HINT : TAP_HINT);
   let gestureOn = false;
   let compareRun = 0;          // generation counter for the A/B playback
@@ -103,19 +103,19 @@ function runSession(root, cfg) {
   // value the user set in Settings, clamped to something usable here.
   const recognizer = createRecognizer({
     // Sounding the tick on touch — not on the tap judgement — is what makes it
-    // feel instant: it lands with the finger, and a hold, swipe or circle that
-    // follows ticks too yet still counts as no tap at all.
+    // feel instant: it lands with the finger, and a hold, swipe or back-and-forth
+    // that follows ticks too yet still counts as no tap at all.
     onTouch: () => { if (gestureOn) Audio.playNote(84, 0.045, 1, { lead: UI_LEAD }); },
     onCommit: n => { if (gestureOn) submitByCount(n); },
     onSwipe: () => { if (gestureOn) { clearAuto(); nextQuestion(); } },   // straight line → next
     onHold: () => { if (gestureOn) setGesture(false); },                  // tap mode: hold → leave
     onRepeat: () => { if (gestureOn) Audio.playNote(84, 0.045, 1, { lead: UI_LEAD }); },
     onExit: () => { if (gestureOn) setGesture(false); },                  // hold mode: triple-tap
-    onCircle: loops => {
+    onBackAndForth: trips => {
       if (!gestureOn) return;
-      // Two loops after a miss: name the answers instead of re-playing them.
-      // The speech must start inside this gesture handler — iOS requires it.
-      if (loops >= 2 && answered && lastResultCorrect === false && lastChoiceId !== null) {
+      // Two round trips after a miss: name the answers instead of re-playing
+      // them. The speech must start inside this gesture handler — iOS requires it.
+      if (trips >= 2 && answered && lastResultCorrect === false && lastChoiceId !== null) {
         Audio.stopAll();
         speakMiss(cfg.moduleId, lastChoiceId, q.answerId);
         return;
@@ -222,14 +222,14 @@ function runSession(root, cfg) {
             ghRow('Hold still', 'one tick per interval — release after N ticks to pick option N; after a miss it plays that option'),
             ghRow('Tap three times', 'turns gesture mode off'),
             ghRow('Swipe a line', 'Next → — or skip the question if you have not answered'),
-            ghRow('Draw a circle', '▶ Play / replay — after a wrong answer it plays your pick, then the real one'),
-            ghRow('Circle twice', 'after a wrong answer, speaks your pick and then the real one — the Names button does the same'),
+            ghRow('Swipe back & forth', '▶ Play / replay — after a wrong answer it plays your pick, then the real one'),
+            ghRow('Back & forth twice', 'after a wrong answer, speaks your pick and then the real one — the Names button does the same'),
           ] : [
             ghRow('Tap once', 'the 1st answer button'),
             ghRow('Tap N times', 'the Nth answer button — a tick plays on every tap so you can count with your eyes closed. After a miss it plays that option instead'),
             ghRow('Swipe a line', 'Next → — or skip the question if you have not answered'),
-            ghRow('Draw a circle', '▶ Play / replay — after a wrong answer it plays your pick, then the real one'),
-            ghRow('Circle twice', 'after a wrong answer, speaks your pick and then the real one — the Names button does the same'),
+            ghRow('Swipe back & forth', '▶ Play / replay — after a wrong answer it plays your pick, then the real one'),
+            ghRow('Back & forth twice', 'after a wrong answer, speaks your pick and then the real one — the Names button does the same'),
             ghRow('Long press', 'turns gesture mode off'),
           ]),
         h('p', { class: 'tiny muted' }, 'A wrong answer plays your pick and then the real one, so the comparison needs no buttons. Everything else — back, Options, keyboard — stays locked until the switch is off.'),
@@ -387,7 +387,7 @@ function runSession(root, cfg) {
     shell.classList.remove('awaiting-play');
     try {
       // After a miss, replay is the A/B itself: your pick, then the real
-      // answer — the same pairing the buttons offer, but via play/circle/R.
+      // answer — the same pairing the buttons offer, but via play/back-and-forth/R.
       const compareAfterMiss = answered && lastResultCorrect === false
         && typeof q.playOption === 'function' && lastChoiceId !== null;
       if (compareAfterMiss) {
@@ -570,7 +570,7 @@ function runSession(root, cfg) {
           h('button', { class: 'btn small', onclick: () => auditionChoice(id) }, iconEl('play'), h('span', {}, 'Your pick')),
           h('button', { class: 'btn small', onclick: () => auditionChoice(q.answerId) }, iconEl('play'), h('span', {}, 'Answer')));
       }
-      // The button equivalent of the two-circle gesture: speak the names.
+      // The button equivalent of the two-trip gesture: speak the names.
       // Hidden when the platform has no speech engine or the names are unknown.
       if (speechAvailable()
         && spokenAnswerName(cfg.moduleId, id) && spokenAnswerName(cfg.moduleId, q.answerId)) {

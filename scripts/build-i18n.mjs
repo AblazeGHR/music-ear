@@ -38,8 +38,10 @@ const EXTRA = {
     '正在聆听——说选项名、数字，或“重播”',
   'Play the question first — say “replay”': '请先播放题目——说“重播”',
   'Tap any option (or say its name) to hear it.': '点按或说出任意选项即可试听。',
-  'Tap ×N = option N (after a miss: play it) · Swipe = next · Hold = off · Circle = replay · 2 circles = names':
-    '点击 ×N = 第 N 个选项（答错后试听该选项）· 划直线 = 下一题 · 长按 = 关闭 · 画圈 = 重播 · 画两圈 = 报答案名',
+  'Tap ×N = option N (after a miss: play it) · Swipe = next · Hold = off · Back & forth = replay · twice = names':
+    '点击 ×N = 第 N 个选项（答错后试听该选项）· 划直线 = 下一题 · 长按 = 关闭 · 来回滑动 = 重播 · 来回两次 = 报答案名',
+  'Swipe back & forth': '来回滑动',
+  'Back & forth twice': '来回滑动两次',
   'the Nth answer button — a tick plays on every tap so you can count with your eyes closed. After a miss it plays that option instead':
     '第 N 个答案按钮——每次点击都有提示音，闭眼也能数；答错后改为播放该选项',
   'Gesture mode': '手势模式',
@@ -146,8 +148,8 @@ for (const [table, source, zh] of tables) {
 }
 
 const MANUAL_TEMPLATES = {
-  'Press & hold: a tick every {ms} ms · Release after N ticks = option N · Triple-tap = off · Swipe = next · Circle = replay · 2 circles = names':
-    '长按：每 {ms} 毫秒响一声 · 松手时响 N 声 = 第 N 项 · 连按三下 = 关闭 · 划直线 = 下一题 · 画圈 = 重播 · 画两圈 = 报答案',
+  'Press & hold: a tick every {ms} ms · Release after N ticks = option N · Triple-tap = off · Swipe = next · Back & forth = replay · twice = names':
+    '长按：每 {ms} 毫秒响一声 · 松手时响 N 声 = 第 N 项 · 连按三下 = 关闭 · 划直线 = 下一题 · 来回滑动 = 重播 · 来回两次 = 报答案',
   'C major melody, {n} notes, {where}': 'C 大调旋律，{n} 个音符，{where}',
 };
 

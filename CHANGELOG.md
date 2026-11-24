@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.18.1 — 2026-11-24
+
+- ✋ **Replay and answer-names are swipes now, not circles.** In gesture mode, **one back-and-forth swipe replays** the question and **two back-and-forth swipes** speak the answer names after a miss. A single straight swipe still means Next, so the three gestures are told apart by how many times you turn around rather than by drawing a loop
+- Detection projects the path onto its dominant axis and counts legs with a hysteresis band, so the small backward drag at the end of a normal swipe is not mistaken for a trip; a gesture must also return near where it started
+- Hints and the gesture help sheet describe the new movement; English and Chinese copy updated. Hold-to-count mode uses the same gestures
+
 ## 0.18.0 — 2026-11-24
 
 - 🎨 **Visual refresh, without changing the layout.** The emoji/character icons are replaced by bundled Lucide line icons (ISC) — module cards, the header controls, stats, guide, feedback moods, play/replay, undo, names and correct/incorrect feedback all share one visual language. A small gradient brand tile replaces the old text glyph

@@ -4,7 +4,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createRecognizer, isCircle, GESTURE_DEFAULTS } from '../js/gesture.js';
+import { createRecognizer, backAndForthTrips, GESTURE_DEFAULTS } from '../js/gesture.js';
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
@@ -17,7 +17,7 @@ function recorder(options = {}) {
     onCommit: n => calls.push(['commit', n]),
     onHold: () => calls.push(['hold']),
     onSwipe: () => calls.push(['swipe']),
-    onCircle: loops => calls.push(['circle', loops]),
+    onBackAndForth: trips => calls.push(['forth', trips]),
     onRepeat: n => calls.push(['repeat', n]),
     onExit: () => calls.push(['exit']),
   };
@@ -37,14 +37,22 @@ function hold(rec, x = 100, y = 100, t = 0, dur = 80) {
   rec.pointerUp(x, y, t + dur);
 }
 
-// Points around a circle, fed in as down/move…/up.
-function circle(rec, { cx = 200, cy = 200, r = 80, turns = 1.25, steps = 32, t0 = 0, dur = 400 } = {}) {
-  rec.pointerDown(cx + r, cy, t0);
-  for (let i = 1; i <= steps; i++) {
-    const a = (i / steps) * 2 * Math.PI * turns;
-    rec.pointerMove(cx + r * Math.cos(a), cy + r * Math.sin(a), t0 + (dur * i) / steps);
+// A back-and-forth along x: out, back, and (for two trips) out and back again.
+// Straight legs and no jitter, so the hysteresis is the only thing under test.
+function zigzag(rec, { x0 = 140, y0 = 220, leg = 90, trips = 1, steps = 6, t0 = 0, dur = 600 } = {}) {
+  const legs = trips * 2;
+  const per = dur / legs;
+  rec.pointerDown(x0, y0, t0);
+  let x = x0;
+  for (let l = 1; l <= legs; l++) {
+    const to = x0 + (l % 2 === 1 ? leg : 0);
+    for (let i = 1; i <= steps; i++) {
+      const t = t0 + per * (l - 1) + (per * i) / steps;
+      rec.pointerMove(x + ((to - x) * i) / steps, y0, t);
+    }
+    x = to;
   }
-  rec.pointerUp(cx + r, cy, t0 + dur);
+  rec.pointerUp(x, y0, t0 + dur);
 }
 
 test('N quick taps commit once as "option N"', async () => {
@@ -87,7 +95,7 @@ test('every touch ticks, and only real taps are judged', async () => {
   for (const [label, drive] of [
     ['tap', r => tap(r)],
     ['hold', r => hold(r)],
-    ['circle', r => circle(r)],
+    ['back-and-forth', r => zigzag(r)],
     ['swipe', r => { r.pointerDown(100, 100, 0); r.pointerMove(170, 100, 40); r.pointerUp(240, 100, 80); }],
     ['curve (ignored)', r => { r.pointerDown(280, 100, 0); for (let i = 1; i <= 16; i++) { const a = Math.PI * (i / 16); r.pointerMove(200 + 80 * Math.cos(a), 100 + 80 * Math.sin(a), i * 12); } r.pointerUp(120, 100, 200); }],
   ]) {
@@ -116,22 +124,28 @@ test('a hold discards taps that were still waiting to commit', async () => {
     'no commit — the stray tap was part of reaching for the hold');
 });
 
-test('a circle fires onCircle(1) and never a tap', () => {
+test('one back-and-forth fires onBackAndForth(1) and never a tap', () => {
   const { calls, rec } = recorder();
-  circle(rec);
-  assert.deepEqual(calls, [['circle', 1]]);
+  zigzag(rec);
+  assert.deepEqual(calls, [['forth', 1]]);
 });
 
-test('a second loop reports onCircle(2)', () => {
+test('two back-and-forth trips report 2', () => {
   const { calls, rec } = recorder();
-  circle(rec, { turns: 2.3 });          // well past two full turns
-  assert.deepEqual(calls, [['circle', 2]]);
+  zigzag(rec, { trips: 2 });
+  assert.deepEqual(calls, [['forth', 2]]);
 });
 
-test('a single loop that overshoots a little still counts as one', () => {
+test('a swipe with a small rebound stays a swipe, not a trip', () => {
+  // 220 px out, 24 px back — under the hysteresis band, and it does not return.
   const { calls, rec } = recorder();
-  circle(rec, { turns: 1.3 });          // one loop plus a third, not two
-  assert.deepEqual(calls, [['circle', 1]]);
+  rec.pointerDown(80, 200, 0);
+  for (let i = 1; i <= 10; i++) rec.pointerMove(80 + i * 22, 200, i * 30);
+  rec.pointerMove(296, 200, 330);
+  rec.pointerUp(296, 200, 360);
+  assert.deepEqual(calls, [['swipe']]);
+  const pts = [{ x: 80, y: 200, t: 0 }, { x: 200, y: 200, t: 150 }, { x: 300, y: 200, t: 250 }, { x: 276, y: 200, t: 320 }];
+  assert.equal(backAndForthTrips(pts), 0);
 });
 
 test('a straight line fires onSwipe and never a tap', () => {
@@ -183,21 +197,22 @@ test('reset() drops a pending count without committing', async () => {
   assert.equal(rec.pending, 0);
 });
 
-test('isCircle accepts loops and rejects lookalikes', () => {
-  const pts = n => Array.from({ length: n }, (_, i) => ({ x: 200 + 80 * Math.cos(i / 4), y: 200 + 80 * Math.sin(i / 4), t: i * 12 }));
-  assert.ok(isCircle(pts(32)), 'a full loop is a circle');
+test('backAndForthTrips counts trips and rejects lookalikes', () => {
+  const line = Array.from({ length: 24 }, (_, i) => ({ x: 100 + i * 10, y: 100, t: i * 12 }));
+  assert.equal(backAndForthTrips(line), 0, 'a straight line never reversed');
 
-  const line = Array.from({ length: 32 }, (_, i) => ({ x: 100 + i * 8, y: 100, t: i * 12 }));
-  assert.ok(!isCircle(line), 'a straight line is not');
+  const out = [{ x: 100, y: 100, t: 0 }, { x: 200, y: 100, t: 100 }, { x: 300, y: 100, t: 200 }];
+  const oneTrip = [...out, { x: 200, y: 100, t: 300 }, { x: 100, y: 100, t: 400 }];
+  assert.equal(backAndForthTrips(oneTrip), 1);
 
-  const tiny = pts(32).map(p => ({ ...p, x: 200 + (p.x - 200) * 0.05, y: 200 + (p.y - 200) * 0.05 }));
-  assert.ok(!isCircle(tiny), 'jitter-sized loops are not circles');
+  const twoTrips = [...oneTrip, { x: 200, y: 100, t: 500 }, { x: 100, y: 100, t: 600 }];
+  assert.equal(backAndForthTrips(twoTrips), 2);
 
-  const slow = pts(32).map((p, i) => ({ ...p, t: i * 200 }));
-  assert.ok(!isCircle(slow), 'too slow to be intentional');
+  const tiny = oneTrip.map(p => ({ ...p, x: 200 + (p.x - 200) * 0.1, y: 110 }));
+  assert.equal(backAndForthTrips(tiny), 0, 'jitter-sized movement is not a trip');
 
-  const huge = pts(32).map(p => ({ ...p, x: 500 + (p.x - 200) * 4, y: 500 + (p.y - 200) * 4 }));
-  assert.ok(!isCircle(huge), 'a huge sweeping path is a drag, not a circle');
+  const slow = twoTrips.map((p, i) => ({ ...p, t: i * 900 }));
+  assert.equal(backAndForthTrips(slow), 0, 'too slow to be intentional');
 });
 
 test('the defaults leave room for deliberate gestures', () => {

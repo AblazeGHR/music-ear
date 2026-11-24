@@ -8,8 +8,8 @@
 //
 // Shared gestures, unchanged in both modes:
 //   • swipe a straight line → next question (skips an ungraded one)
-//   • circle                → play / replay; a second full loop (onCircle
-//     reports 2) is the "name the answers" gesture after a miss
+//   • swipe back and forth  → play / replay; two back-and-forth trips are the
+//     "name the answers" gesture after a miss (onBackAndForth reports the trips)
 //
 // onTouch fires on touch-down only in tap mode, so the caller can sound an
 // instant tick. Hold mode sounds its ticks through onRepeat instead, one per
@@ -29,10 +29,9 @@ export const GESTURE_DEFAULTS = {
   moveTolerance: 14,       // px of travel still considered "not moving"
   swipeMinDist: 40,        // px of net travel for a deliberate straight swipe
   swipeMinStraightness: 0.9, // net travel / path length — near 1 reads as a line
-  circleMinAngle: 1.5 * Math.PI,  // how much arc counts as a circle
-  circleMinRadius: 16,     // px — smaller loops are jitter
-  circleMaxRadius: 240,    // px — larger paths are probably a drag
-  circleMaxMs: 1800,       // a circle drawn slower than this is ignored
+  zigMinLeg: 32,           // px each way before a direction change counts
+  zigMaxMs: 2500,          // a slower back-and-forth is not a deliberate gesture
+  zigMaxReturnRatio: 0.6,  // net travel / path length — a round trip returns
 };
 
 export function createRecognizer(handlers, options = {}) {
@@ -97,8 +96,8 @@ export function createRecognizer(handlers, options = {}) {
       if (!path.length) return;
       path.push({ x, y, t });
       maxMove = Math.max(maxMove, Math.hypot(x - downX, y - downY));
-      // Once it is clearly a swipe or a circle, stop ticking; the ticks that
-      // already played are discarded on release.
+      // Once the finger clearly moves, stop ticking; the ticks that already
+      // played are discarded on release.
       if (holdMode && maxMove > cfg.moveTolerance) clearRepeat();
     },
 
@@ -109,9 +108,12 @@ export function createRecognizer(handlers, options = {}) {
       const duration = t - downAt;
       clearRepeat();
 
-      if (maxMove > cfg.moveTolerance && isCircle(path, cfg)) {
+      const trips = maxMove > cfg.moveTolerance ? backAndForthTrips(path, cfg) : 0;
+      if (trips > 0) {
+        clearTapTimer();
+        tapCount = 0;
         repeatCount = 0;
-        handlers.onCircle?.(circleLoops(path, cfg));
+        handlers.onBackAndForth?.(trips);
       } else if (maxMove > cfg.moveTolerance && isSwipe(path, cfg)) {
         clearTapTimer();
         tapCount = 0;
@@ -169,16 +171,11 @@ export function createRecognizer(handlers, options = {}) {
   };
 }
 
-// Geometric summary of one gesture's path: how far it travelled, how much it
-// curved around its own centroid, how straight it was, and how long it took.
-function pathShape(path, cfg) {
-  let cx = 0, cy = 0;
-  for (const p of path) { cx += p.x; cy += p.y; }
-  cx /= path.length; cy /= path.length;
-
-  let radius = 0, displacement = 0;
+// Geometric summary of one gesture's path: how far it travelled, how straight
+// it was, and how long it took.
+function pathShape(path) {
+  let displacement = 0;
   for (const p of path) {
-    radius = Math.max(radius, Math.hypot(p.x - cx, p.y - cy));
     displacement = Math.max(displacement, Math.hypot(p.x - path[0].x, p.y - path[0].y));
   }
 
@@ -189,49 +186,62 @@ function pathShape(path, cfg) {
   const straightness = pathLength > 0 ? Math.min(1, displacement / pathLength) : 0;
 
   const duration = path[path.length - 1].t - path[0].t;
-  if (duration <= 0 || duration > cfg.circleMaxMs) {
-    return { duration, radius, displacement, pathLength, straightness, angle: 0 };
+  return { duration, displacement, pathLength, straightness };
+}
+
+// How many complete "out and back" trips the path contains — 0 when it never
+// reversed, 1 for one back-and-forth, 2 for two.
+//
+// The path is projected onto its dominant axis (start → farthest point), then
+// walked with a hysteresis band: a direction only flips once the finger has
+// retreated zigMinLeg from the extreme it reached. Counting legs rather than
+// turns is what makes "once" and "twice" unambiguous, and the band is what
+// keeps the small backward drag at the end of a plain swipe from reading as a
+// trip. Requiring the path to end roughly where it began rejects that drag too:
+// a true round trip returns home.
+export function backAndForthTrips(path, cfg = GESTURE_DEFAULTS) {
+  if (path.length < 5) return 0;
+  const shape = pathShape(path);
+  if (shape.duration <= 0 || shape.duration > cfg.zigMaxMs) return 0;
+  if (shape.pathLength < cfg.zigMinLeg * 2) return 0;
+
+  // Dominant axis: the direction of the longest straight line from the start.
+  let ax = 1, ay = 0, reach = 0;
+  for (const p of path) {
+    const dx = p.x - path[0].x, dy = p.y - path[0].y;
+    const d = Math.hypot(dx, dy);
+    if (d > reach) { reach = d; ax = dx / d; ay = dy / d; }
   }
-  let angle = 0;
-  let prev = Math.atan2(path[0].y - cy, path[0].x - cx);
+  if (reach < cfg.zigMinLeg) return 0;
+
+  // A round trip comes home; a swipe with a little rebound does not.
+  const endDx = path[path.length - 1].x - path[0].x;
+  const endDy = path[path.length - 1].y - path[0].y;
+  if (Math.hypot(endDx, endDy) > shape.pathLength * cfg.zigMaxReturnRatio) return 0;
+
+  const project = p => (p.x - path[0].x) * ax + (p.y - path[0].y) * ay;
+  let dir = 0, extreme = 0, legs = 1;
   for (let i = 1; i < path.length; i++) {
-    const a = Math.atan2(path[i].y - cy, path[i].x - cx);
-    let d = a - prev;
-    if (d > Math.PI) d -= 2 * Math.PI;
-    else if (d < -Math.PI) d += 2 * Math.PI;
-    angle += d;
-    prev = a;
+    const s = project(path[i]);
+    if (dir === 0) {
+      if (s - extreme >= cfg.zigMinLeg) { dir = 1; extreme = s; }
+      else if (extreme - s >= cfg.zigMinLeg) { dir = -1; extreme = s; }
+    } else if (dir === 1) {
+      if (s > extreme) extreme = s;
+      else if (extreme - s >= cfg.zigMinLeg) { dir = -1; extreme = s; legs += 1; }
+    } else {
+      if (s < extreme) extreme = s;
+      else if (s - extreme >= cfg.zigMinLeg) { dir = 1; extreme = s; legs += 1; }
+    }
   }
-  return { duration, radius, displacement, pathLength, straightness, angle };
-}
-
-// True when the pointer swept far enough around its own centroid to read as a
-// loop. Direction-agnostic (both clockwise and counter-clockwise count).
-export function isCircle(path, cfg = GESTURE_DEFAULTS) {
-  if (path.length < 8) return false;
-  const shape = pathShape(path, cfg);
-  return shape.duration > 0
-    && shape.radius >= cfg.circleMinRadius && shape.radius <= cfg.circleMaxRadius
-    && Math.abs(shape.angle) >= cfg.circleMinAngle;
-}
-
-// How many times around the loop went. Measured as path length over the
-// circumference of the loop it drew — one loop of travel is one circle, and
-// rounding absorbs the wobble of a hand-drawn loop. A single circle that
-// overshoots its start by a third or less still reads as one; a loop and a half
-// or more reads as two. (The accumulated angle cannot be used here: it
-// saturates at one turn per revolution.)
-export function circleLoops(path, cfg = GESTURE_DEFAULTS) {
-  const shape = pathShape(path, cfg);
-  if (shape.radius <= 0 || shape.pathLength <= 0) return 1;
-  return Math.max(1, Math.round(shape.pathLength / (2 * Math.PI * shape.radius)));
+  return Math.floor(legs / 2);
 }
 
 // True when the pointer travelled far along a straight line. Measured as net
 // travel over path length (a line is ~1, an arc well below), which separates it
 // from both loops and curves — a curve reads as neither gesture and is ignored.
 export function isSwipe(path, cfg = GESTURE_DEFAULTS) {
-  const shape = pathShape(path, cfg);
+  const shape = pathShape(path);
   return shape.displacement >= cfg.swipeMinDist
     && shape.straightness >= cfg.swipeMinStraightness;
 }
