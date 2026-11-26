@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.19.1 — 2026-11-26
+
+- 🎚 **Choose the tonic** in Progressions and Chord Degrees: Random (default) or any of the twelve keys. A fixed tonic is placed at C3–B3, so “C major” is now actually available
+- 🐞 **Random no longer skips C.** Both exercises drew their root from MIDI 50–59 (D–B), an old window chosen for register comfort; it accidentally excluded C. Random now covers C3–B3 (48–59), and the tonic selector makes the choice explicit
+
 ## 0.19.0 — 2026-11-26
 
 - 🎹 **New exercise: Chord Degrees.** A cadence fixes the key, then a progression of 2–8 chords plays; tap one Roman numeral per chord, in order. Options: **key** (major/minor), **which degrees may appear** (all seven diatonic functions), **chord type** (triads, seventh chords, or a mix) and **length**

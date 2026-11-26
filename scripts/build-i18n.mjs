@@ -65,6 +65,8 @@ const EXTRA = {
   'Major key': '大调',
   'Minor key': '小调',
   'Key': '调性',
+  'Tonic': '主音',
+  'Random': '随机',
   'Chords per question': '每题和弦数',
   'First chord is the tonic': '第一个和弦是主和弦',
   'Chord Degrees': '和弦级数',

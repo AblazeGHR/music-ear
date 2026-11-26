@@ -141,6 +141,29 @@ test('chord-degree questions follow length, pool and chord type', () => {
   assert.deepEqual([...seen].sort(), ['seventh', 'triad'], 'Both mixes the two types');
 });
 
+test('a fixed tonic places the question in that key; random covers all twelve', () => {
+  for (const [pc, midi] of [[0, 48], [7, 55], [11, 59]]) {
+    const q = generate('chorddegrees', {
+      mode: 'major', tonic: String(pc), degrees: ['I', 'V'], length: 2, chordType: 'triad',
+    });
+    assert.equal(q.keyRoot, midi, `tonic ${pc} sits at ${midi}`);
+  }
+  const p = generate('progressions', {
+    mode: 'major', tonic: '5', pool: ['I', 'V'], length: 2, startTonic: true,
+  });
+  assert.equal(p.keyRoot, 53, 'the same tonic option works for Progressions');
+
+  const seen = new Set();
+  for (let i = 0; i < 200; i++) {
+    const q = generate('chorddegrees', {
+      mode: 'major', tonic: 'random', degrees: ['I', 'V'], length: 2, chordType: 'triad',
+    });
+    assert.ok(q.keyRoot >= 48 && q.keyRoot <= 59);
+    seen.add(q.keyRoot);
+  }
+  assert.ok(seen.has(48), 'C is no longer skipped');
+});
+
 test('minor chord degrees use minor numerals and stay in the key', () => {
   const cfg = { mode: 'minor', degrees: ['i', 'iv', 'V', 'VI'], length: 3, chordType: 'triad' };
   for (let i = 0; i < 60; i++) {

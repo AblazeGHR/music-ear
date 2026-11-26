@@ -24,11 +24,13 @@ const CHORD_CHOICES = Object.entries(CHORDS).map(([id, c]) => [id, c.name]);
 const SCALE_CHOICES = Object.entries(SCALES).map(([id, sc]) => [id, sc.name]);
 const DEGREE_CHOICES = Object.entries(DEGREES).map(([id, d]) => [id, d.solfege]);
 const NUMERAL_CHOICES = Object.entries(NUMERALS).map(([id, n]) => [id, n.name]);
+// 'random' plus all twelve tonics; the engine places a fixed tonic at C3–B3.
+const TONIC_CHOICES = [['random', 'Random'], ...pitches().map(pc => [String(pc), pitchClassName(pc)])];
 
 // Degree ids are mode-specific (I vs i, ii vs ii°). Switching the key maps the
 // chosen degrees across by scale-degree number, so a major pool does not turn
 // into an empty pool when the user picks minor.
-const CHORD_DEGREE_DEFAULTS = { mode: 'major', degrees: ['I', 'IV', 'V', 'vi'], length: 4, chordType: 'triad' };
+const CHORD_DEGREE_DEFAULTS = { mode: 'major', tonic: 'random', degrees: ['I', 'IV', 'V', 'vi'], length: 4, chordType: 'triad' };
 
 function degreeNumber(id) {
   for (const list of Object.values(DIATONIC_DEGREES)) {
@@ -171,12 +173,13 @@ export const MODULES = [
     howTo: 'A cadence establishes the key, then a progression plays. Tap one Roman numeral per chord, in order.',
     blurb: 'Hear a key, then identify each chord of a progression by its Roman numeral.',
     tip: 'Track the bass line first — it usually walks from root to root. Then confirm with each chord\'s colour: is it the bright IV or the wistful vi?',
-    defaults: { mode: 'major', pool: ['I', 'IV', 'V', 'vi'], length: 4, startTonic: true },
+    defaults: { mode: 'major', tonic: 'random', pool: ['I', 'IV', 'V', 'vi'], length: 4, startTonic: true },
     options: [
       {
         key: 'mode', label: 'Key', type: 'select',
         choices: [['major', 'Major key'], ['minor', 'Minor key']],
       },
+      { key: 'tonic', label: 'Tonic', type: 'select', choices: TONIC_CHOICES },
       { key: 'pool', label: 'Chords', type: 'chips', choices: NUMERAL_CHOICES, noTranslate: true },
       {
         key: 'length', label: 'Chords per question', type: 'select', coerce: Number,
@@ -206,6 +209,7 @@ export const MODULES = [
         key: 'mode', label: 'Key', type: 'select',
         choices: [['major', 'Major key'], ['minor', 'Minor key']],
       },
+      { key: 'tonic', label: 'Tonic', type: 'select', choices: TONIC_CHOICES },
       {
         key: 'degrees', label: 'Degrees', type: 'chips', noTranslate: true,
         choices: cfg => (DIATONIC_DEGREES[cfg.mode] ?? DIATONIC_DEGREES.major).map(d => [d.id, d.name]),

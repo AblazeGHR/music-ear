@@ -288,6 +288,16 @@ function voiceNumeral(keyRoot, numeralId, center = 64) {
   return voiceChord(keyRoot, num.root, num.quality, center);
 }
 
+// A fixed tonic sits at C3–B3 (MIDI 48–59); "random" covers all twelve, so C
+// is no longer skipped by the old D–B window.
+function keyRootFor(cfg) {
+  if (cfg.tonic === undefined || cfg.tonic === null || cfg.tonic === 'random') {
+    return randInt(48, 59);
+  }
+  const pc = Number(cfg.tonic);
+  return Number.isFinite(pc) ? 48 + ((Math.round(pc) % 12) + 12) % 12 : randInt(48, 59);
+}
+
 function cadenceFor(keyRoot, mode) {
   return Audio.cadenceEvents(
     CADENCES[mode].map(n => ({ root: 0, semis: voiceNumeral(keyRoot, n) }))
@@ -308,7 +318,7 @@ function genChordDegrees(mod, cfg) {
     seq.push(id);
   }
 
-  const keyRoot = randInt(50, 59);
+  const keyRoot = keyRootFor(cfg);
   const cadence = cadenceFor(keyRoot, cfg.mode === 'minor' ? 'minor' : 'major');
   const chordTypes = seq.map(() => (cfg.chordType === 'both'
     ? choice(['triad', 'seventh'])
@@ -326,6 +336,7 @@ function genChordDegrees(mod, cfg) {
 
   return {
     moduleId: 'chorddegrees', kind: 'sequence', prompt: mod.prompt,
+    keyRoot,
     options: usable.map(id => ({ id, label: byId.get(id).name })),
     answerSeq: seq,
     given: seq.map(() => false),
@@ -414,7 +425,7 @@ function genProgression(mod, cfg) {
     if (alternatives.length) seq[seq.length - 1] = choice(alternatives);
   }
 
-  const keyRoot = randInt(50, 59);
+  const keyRoot = keyRootFor(cfg);
   const cadence = cadenceFor(keyRoot, cfg.mode);
   let at = Audio.eventsDuration(cadence) + 0.8;
   const progEvents = [];
@@ -427,6 +438,7 @@ function genProgression(mod, cfg) {
 
   return {
     moduleId: 'progressions', kind: 'sequence', prompt: mod.prompt,
+    keyRoot,
     options: cfg.pool.map(id => ({ id, label: NUMERALS[id].name })),
     answerSeq: seq,
     given,
