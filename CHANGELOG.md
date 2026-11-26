@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.18.2 — 2026-11-26
+
+- ⏭ **Next moved under the question title.** Before answering, the quiet skip button now sits directly below the prompt instead of at the bottom of the page, so it is visible without scrolling even with a long option list. After answering it steps aside for the primary Next below the feedback
+- 📖 **The instructions are folded away.** The explanation paragraph under the question is collapsed by default; tap the title (or press Enter/Space) to unfold it, tap again to fold it. A small chevron shows the state. The exercise tagline in the header is unchanged
+
 ## 0.18.1 — 2026-11-24
 
 - ✋ **Replay and answer-names are swipes now, not circles.** In gesture mode, **one back-and-forth swipe replays** the question and **two back-and-forth swipes** speak the answer names after a miss. A single straight swipe still means Next, so the three gestures are told apart by how many times you turn around rather than by drawing a loop
