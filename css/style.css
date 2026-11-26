@@ -586,7 +586,7 @@ button:focus-visible, a:focus-visible, select:focus-visible {
 }
 .score-svg .st-ledger { stroke-width: 1.4; }
 .score-svg .st-bar { stroke: color-mix(in srgb, var(--text) 60%, transparent); }
-.score-svg .st-stem, .score-svg .st-flag, .score-svg .st-beam { stroke: currentColor; }
+.score-svg .st-stem, .score-svg .st-beam { stroke: currentColor; }
 .score-svg .st-clef { color: color-mix(in srgb, var(--text) 88%, transparent); }
 .score-svg .snote.bad { color: var(--bad); }
 .score-svg .snote.good { color: var(--good); }
@@ -1280,3 +1280,6 @@ body {
 }
 /* Skip sits directly under the title, not at the bottom of the page. */
 .s-topnext { margin-top: 0.3rem; margin-bottom: 0; min-height: 0; }
+
+/* The clef and time signature are engraved glyphs: full ink, like the notes. */
+.score-svg .st-clef { color: var(--text); }

@@ -112,6 +112,7 @@ npm run android:icons               # 改过 assets/icon.svg 后重新生成启�
 
 - 图标：[Lucide](https://lucide.dev)（ISC，见 `assets/icons/LICENSE`）
 - 字体：Outfit（SIL OFL，见 `assets/fonts/OFL.txt`）
+- 乐谱字形：[Bravura](https://github.com/steinbergmedia/bravura)（SMuFL 参考字体，SIL OFL 1.1，见 `assets/fonts/Bravura-OFL.txt`）。只内联了谱号、拍号、符头、符尾和附点几个字形的路径，由 `scripts/build-music-glyphs.py` 生成 `js/music-glyphs.js`
 
 ## 数据与隐私
 

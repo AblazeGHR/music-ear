@@ -8,7 +8,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   layoutScore, renderScore, diatonicStep, noteY, fretFor, tabLineY, GEOM,
-  CLEF, CLEF_OUTLINE,
+  CLEF, TIME_X, GLYPH_SCALE,
 } from '../js/notation.js';
 import { STAFF_POOL, TAB_POOL } from '../js/reading.js';
 
@@ -28,37 +28,39 @@ test('pitch maps to the staff line it belongs to', () => {
   assert.equal(diatonicStep(61), null);
 });
 
-test('the clef is scaled to the staff and its spiral stays on the G line', () => {
-  // The spiral circles G4: the anchor must sit on that line.
-  assert.equal(CLEF.y, noteY(67));
-  assert.ok(CLEF.scale > 0.55 && CLEF.scale < 0.7, 'clef is drawn at ~0.62');
-
-  // The glyph never reaches more than one staff space past either edge.
-  const top = CLEF.y + CLEF_OUTLINE.top * CLEF.scale;
-  const bottom = CLEF.y + CLEF_OUTLINE.bottom * CLEF.scale;
-  assert.ok(top >= GEOM.top - GEOM.lineGap, `clef top ${top} above the staff`);
-  assert.ok(bottom <= GEOM.bottom + GEOM.lineGap, `clef bottom ${bottom} below the staff`);
-  // A 3.2 unit stroke at this scale reads as ~2 units on screen.
-  const stroke = 3.2 * CLEF.scale;
-  assert.ok(stroke > 1.8 && stroke < 2.2, `visual stroke ${stroke}`);
+test('the clef and time signature are real SMuFL glyphs', () => {
+  // Bravura's G clef has its origin on the bottom staff line; the spiral is
+  // two staff spaces above the origin, which is exactly the G line.
+  assert.equal(CLEF.y, GEOM.bottom);
+  assert.equal(CLEF.scale, GLYPH_SCALE);
+  assert.equal(GLYPH_SCALE, GEOM.lineGap / 250);
+  assert.equal(CLEF.y - 250 * CLEF.scale, noteY(67), 'the spiral circles G4');
 
   const svg = renderScore(notesOf([60, 62, 64, 65]), { notation: 'staff' });
-  assert.match(svg, new RegExp(`translate\\(${CLEF.x} ${CLEF.y}\\) scale\\(${CLEF.scale}\\)`));
-  // The 4/4 columns start at x=46, well clear of the clef's right edge.
-  const clefRight = CLEF.x + 5.6 * CLEF.scale;
-  assert.ok(46 - clefRight >= 10, `time signature is ${46 - clefRight} units from the clef`);
+  // Outlines, not the old hand-drawn stroked path.
+  assert.match(svg, /class="st-clef" d="M[^"]+"/);
+  assert.doesNotMatch(svg, /st-clef[^>]*stroke=/);
+  assert.equal((svg.match(/class="st-time" d="M/g) || []).length, 2);
+
+  // The clef's ink ends at x = 6 + 671 * scale; the time signature starts at
+  // TIME_X, leaving a small gap, and the 4s clear the first note column.
+  const clefRight = CLEF.x + 671 * CLEF.scale;
+  assert.ok(TIME_X - clefRight >= 2, `time signature ${TIME_X - clefRight} units from the clef`);
+  assert.ok(GEOM.startX - (TIME_X + 450 * CLEF.scale) >= 4, 'first note clears the 4');
 });
 
-test('half notes are drawn as open heads, shorter notes filled', () => {
+test('half notes use the open SMuFL head, shorter notes the black head', () => {
   const half = renderScore(notesOf([60, 64], 2));
-  assert.equal((half.match(/class="st-head"[^>]*fill="none"[^>]*stroke-width="1.6"/g) || []).length, 2);
-  assert.equal((half.match(/class="st-head"[^>]*fill="currentColor"/g) || []).length, 0);
+  assert.equal((half.match(/data-glyph="half"/g) || []).length, 2);
+  assert.equal((half.match(/data-glyph="black"/g) || []).length, 0);
+  // The open head is a filled outline with an inner counter, never a stroke.
+  assert.equal((half.match(/fill="none"/g) || []).length, 0);
 
   for (const beats of [0.5, 1, 1.5]) {
     const filled = renderScore([{ midi: 60, beats }, { midi: 62, beats }]);
-    assert.equal((filled.match(/class="st-head"[^>]*fill="currentColor"/g) || []).length, 2,
-      `a ${beats}-beat note is filled`);
-    assert.equal((filled.match(/class="st-head"[^>]*fill="none"/g) || []).length, 0);
+    assert.equal((filled.match(/data-glyph="black"/g) || []).length, 2,
+      `a ${beats}-beat note uses the black head`);
+    assert.equal((filled.match(/data-glyph="half"/g) || []).length, 0);
   }
 });
 
@@ -213,7 +215,7 @@ test('the tab writes every note on the right string and fret', () => {
   // Stems start on the string, not floating above the number.
   for (const n of lay.notes) {
     if (n.beam !== null) continue;
-    assert.ok(n.stemY < n.y - GEOM.stem, 'stem reaches above the line');
+    assert.equal(n.stemY, n.y - GEOM.tabStem, 'stem reaches above the line');
   }
   const stemStarts = [...svg.matchAll(/class="st-stem"[^>]*y1="([\d.]+)"/g)];
   assert.ok(stemStarts.length > 0);

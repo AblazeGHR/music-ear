@@ -7,6 +7,7 @@
 // height on the staff follows its diatonic step exactly.
 
 import { midiName } from './theory.js';
+import { MUSIC_GLYPHS } from './music-glyphs.js';
 
 // Geometry in SVG user units; the whole drawing is scaled by the viewBox.
 export const GEOM = {
@@ -19,17 +20,21 @@ export const GEOM = {
   beats: 4,        // 4/4
   maxBarsPerSystem: 4,
   systemH: 112,
-  stem: 18,
-  headRx: 4.6,
-  headRy: 3.4,
+  stem: 35,        // 3.5 staff spaces, the engraving standard
+  tabStem: 24,     // above the fret numbers, shorter than a staff stem
+  headRx: 5.9,     // half the Bravura black-notehead width at lineGap 10
 };
 
-// The treble clef is drawn small enough to sit inside the staff's own height:
-// 0.62 of the glyph outline, anchored on the G line (where the spiral belongs).
-export const CLEF = { x: 24, y: 70, scale: 0.62 };
-// Conservative vertical extent of the outline in its own coordinates, so the
-// scale can be checked against the staff without parsing the path.
-export const CLEF_OUTLINE = { top: -31.5, bottom: 31 };
+// Bravura (SMuFL) glyphs are drawn in font units where one staff space is 250
+// units and y points up; render them with scale(s, -s) so the SVG y axis works.
+const SPACE_UNITS = 250;
+export const GLYPH_SCALE = GEOM.lineGap / SPACE_UNITS;
+// The clef's origin is the bottom staff line; its spiral is then on the G line
+// by design, so no hand tuning is needed.
+export const CLEF = { x: 6, y: GEOM.bottom, scale: GLYPH_SCALE };
+export const TIME_X = 36;
+// Stems meet the notehead just inside its widest point.
+const STEM_OFF = 5.6;
 
 // Where a diatonic step lands vertically. E4 (step 30) is the bottom staff
 // line, F5 (step 38) the top one; middle C (step 28) hangs one ledger below.
@@ -222,8 +227,9 @@ export function layoutScore(notes, opts = {}) {
         : Math.max(a.y, b.y) + GEOM.stem;
       group.dir = dir;
       group.y = beamY;
-      group.x1 = a.x + 4.2;
-      group.x2 = b.x + 4.2;
+      const off = dir === 'up' ? STEM_OFF : -STEM_OFF;
+      group.x1 = a.x + off;
+      group.x2 = b.x + off;
       i += 2;
     } else {
       if (a.beats === 0.5) a.flag = true;
@@ -237,7 +243,7 @@ export function layoutScore(notes, opts = {}) {
       n.stemY = groups[n.beam].y;
     } else {
       // Tab stems reach a little higher so the rhythm reads above the numbers.
-      const len = notation === 'tab' ? GEOM.stem + 6 : GEOM.stem;
+      const len = notation === 'tab' ? GEOM.tabStem : GEOM.stem;
       const dir = notation === 'tab' ? 'up' : n.stem;
       n.stemDir = dir;
       n.stemY = dir === 'up' ? n.y - len : n.y + len;
@@ -266,29 +272,19 @@ export const SCORE_MAX_W = 340;
 const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
   .replace(/"/g, '&quot;');
 
-// Treble clef drawn as one stroked path: hook, stem, spiral around the G line,
-// then the tail. Local origin sits on the G line (y = 70) at the stem.
-const TREBLE_CLEF = [
-  'M -9 -26',
-  'C -5.5 -31.5, 2 -31, 2 -24.5',
-  'L 2 -8',
-  'C 2 -4, -1.5 -6.5, -5 -5',
-  'C -9.2 -3, -9.2 3.5, -4.5 5.5',
-  'C 0 7.6, 5.6 4, 5 -0.8',
-  'C 4.4 -5, 0 -6.4, -1.8 -3.6',
-  'C -3.5 -1, -2.2 2.3, 0.7 3.6',
-  'C 3.5 5.2, 5.5 9, 5.5 13',
-  'C 5.5 18.5, 3 22.5, 0.8 26.5',
-  'C -1.6 31, -7.2 29.6, -8.2 25',
-].join(' ');
+// One SMuFL glyph as a filled path. `x`/`y` are the glyph origin in SVG units.
+function glyph(name, x, y, cls, attrs = '', scale = GLYPH_SCALE) {
+  const g = MUSIC_GLYPHS[name];
+  return `<path class="${cls}"${attrs} d="${g.path}" fill="currentColor"`
+    + ` transform="translate(${x.toFixed(2)} ${y.toFixed(2)}) scale(${scale} ${-scale})"/>`;
+}
 
 function noteHead(n) {
-  const g = GEOM;
-  // Half notes and longer are open heads: outline only, no fill.
-  const open = n.beats >= 2;
-  return `<ellipse class="st-head" cx="${n.x}" cy="${n.y}" rx="${g.headRx}" ry="${g.headRy}"`
-    + ` transform="rotate(-18 ${n.x} ${n.y})"`
-    + (open ? ' fill="none" stroke="currentColor" stroke-width="1.6"/>' : ' fill="currentColor"/>');
+  const half = n.beats >= 2;
+  const name = half ? 'noteheadHalf' : 'noteheadBlack';
+  const g = MUSIC_GLYPHS[name];
+  return glyph(name, n.x - (g.adv / 2) * GLYPH_SCALE, n.y, 'st-head',
+    ` data-glyph="${half ? 'half' : 'black'}"`);
 }
 
 function staffSystem(sys, layout, sysTop) {
@@ -299,14 +295,13 @@ function staffSystem(sys, layout, sysTop) {
     parts.push(`<line class="st-line" data-role="staff-line" x1="${l.x1}" y1="${l.y}" x2="${l.x2}" y2="${l.y}"`
       + ` stroke="currentColor" stroke-width="1"/>`);
   }
-  // Clef and time signature. The clef is scaled around the G line so the
-  // spiral stays on it; the 4/4 sits clear of the (now smaller) glyph.
+  // Clef and time signature, both real SMuFL glyphs: the clef sits with its
+  // origin on the bottom line (spiral on G), the two 4s are centred on the
+  // upper and lower halves of the staff.
   if (layout.notation === 'staff') {
-    parts.push(`<g class="st-clef" transform="translate(${CLEF.x} ${CLEF.y}) scale(${CLEF.scale})"`
-      + ` fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">`
-      + `<path d="${TREBLE_CLEF}"/></g>`);
-    parts.push(`<text class="st-time" x="46" y="57" font-size="13" font-weight="700" fill="currentColor">4</text>`);
-    parts.push(`<text class="st-time" x="46" y="75" font-size="13" font-weight="700" fill="currentColor">4</text>`);
+    parts.push(glyph('gClef', CLEF.x, CLEF.y, 'st-clef'));
+    parts.push(glyph('timeSig4', TIME_X, 70, 'st-time'));
+    parts.push(glyph('timeSig4', TIME_X, 50, 'st-time'));
   }
 
   for (const b of sys.barlines) {
@@ -318,7 +313,7 @@ function staffSystem(sys, layout, sysTop) {
   for (const grp of layout.groups) {
     if (grp.notes[0].system !== sys.index) continue;
     parts.push(`<line class="st-beam" data-role="beam" x1="${grp.x1}" y1="${grp.y}" x2="${grp.x2}" y2="${grp.y}"`
-      + ` stroke="currentColor" stroke-width="3.2"/>`);
+      + ` stroke="currentColor" stroke-width="4.6"/>`);
   }
 
   for (const n of layout.notes) {
@@ -333,10 +328,10 @@ function staffSystem(sys, layout, sysTop) {
       parts.push(`<text class="st-fret" data-role="fret" x="${n.x}" y="${y + 3.4}" font-size="10.5"`
         + ` font-weight="700" text-anchor="middle" fill="currentColor">${n.fret ?? '·'}</text>`);
       if (n.stemDir === 'up') {
-        parts.push(`<line class="st-stem" data-role="stem" x1="${n.x + 4.2}" y1="${y - 1.5}" x2="${n.x + 4.2}" y2="${n.stemY}" stroke="currentColor" stroke-width="1.8"/>`);
+        parts.push(`<line class="st-stem" data-role="stem" x1="${n.x + 4.2}" y1="${y - 1.5}" x2="${n.x + 4.2}" y2="${n.stemY}" stroke="currentColor" stroke-width="1.4"/>`);
       }
       if (n.beam === null && n.beats === 0.5) {
-        parts.push(`<path class="st-flag" data-role="flag" d="M ${n.x + 4.2} ${n.stemY} c 5 2 6 7 3 11" stroke="currentColor" stroke-width="1.8" fill="none"/>`);
+        parts.push(glyph('flag8thUp', n.x + 4.2, n.stemY, 'st-flag', ' data-role="flag"'));
       }
       if (layout.showNames) {
         parts.push(`<text class="st-name" x="${n.x}" y="${g2.bottom + 16}" font-size="8.5" text-anchor="middle" fill="currentColor">${esc(n.name)}</text>`);
@@ -345,15 +340,18 @@ function staffSystem(sys, layout, sysTop) {
       const y = n.y;
       parts.push(noteHead(n));
       if (n.stemDir === 'up') {
-        parts.push(`<line class="st-stem" data-role="stem" x1="${n.x + 4.2}" y1="${y}" x2="${n.x + 4.2}" y2="${n.stemY}" stroke="currentColor" stroke-width="1.8"/>`);
+        parts.push(`<line class="st-stem" data-role="stem" x1="${n.x + STEM_OFF}" y1="${y}" x2="${n.x + STEM_OFF}" y2="${n.stemY}" stroke="currentColor" stroke-width="1.4"/>`);
       } else {
-        parts.push(`<line class="st-stem" data-role="stem" x1="${n.x - 4.2}" y1="${y}" x2="${n.x - 4.2}" y2="${n.stemY}" stroke="currentColor" stroke-width="1.8"/>`);
+        parts.push(`<line class="st-stem" data-role="stem" x1="${n.x - STEM_OFF}" y1="${y}" x2="${n.x - STEM_OFF}" y2="${n.stemY}" stroke="currentColor" stroke-width="1.4"/>`);
       }
       if (n.flag) {
-        parts.push(`<path class="st-flag" data-role="flag" d="M ${n.x + 4.2} ${n.stemY} c 6 3 7 9 4 14" stroke="currentColor" stroke-width="1.8" fill="none"/>`);
+        const flag = n.stemDir === 'up' ? 'flag8thUp' : 'flag8thDown';
+        const off = n.stemDir === 'up' ? STEM_OFF : -STEM_OFF;
+        parts.push(glyph(flag, n.x + off, n.stemY, 'st-flag', ' data-role="flag"'));
       }
       if (n.beats === 1.5) {
-        parts.push(`<circle class="st-dot" cx="${n.x + 9.5}" cy="${y}" r="1.7" fill="currentColor"/>`);
+        // The dot glyph is centred on its own origin.
+        parts.push(glyph('augmentationDot', n.x + 9.5, y, 'st-dot'));
       }
       if (layout.showNames) {
         parts.push(`<text class="st-name" x="${n.x}" y="102" font-size="8.5" text-anchor="middle" fill="currentColor">${esc(n.name)}</text>`);

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.18.3 — 2026-11-26
+
+- 🎼 **The sight-reading score now uses real Bravura glyphs** (the SMuFL reference font by Steinberg, SIL OFL 1.1). The hand-drawn treble clef is gone: the clef, the 4/4 time signature, noteheads (black, half, whole), eighth flags and the augmentation dot are the actual font outlines, inlined as SVG paths so nothing is fetched at runtime and no font has to load
+- **Stems now follow engraving standards** (3.5 staff spaces) instead of the old 1.8-space stubs, which also makes the Bravura flags sit correctly; beams are 0.46 spaces thick and follow the stem side, so a down-stem beam meets its stems instead of floating beside them
+- The clef is drawn at full ink (same colour as the notes), and the tab keeps its own shorter stems above the fret numbers
+
 ## 0.18.2 — 2026-11-26
 
 - ⏭ **Next moved under the question title.** Before answering, the quiet skip button now sits directly below the prompt instead of at the bottom of the page, so it is visible without scrolling even with a long option list. After answering it steps aside for the primary Next below the feedback
