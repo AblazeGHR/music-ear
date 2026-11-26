@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.18.4 — 2026-11-26
+
+- ⏭ **The after-answer Next stays under the title too.** It used to jump to the bottom of the page once you answered; now the same button never moves — it changes from the quiet skip style to the primary style in place, so its position and size are identical before answering, after answering, and after moving to the next question. The bottom actions row is gone
+
 ## 0.18.3 — 2026-11-26
 
 - 🎼 **The sight-reading score now uses real Bravura glyphs** (the SMuFL reference font by Steinberg, SIL OFL 1.1). The hand-drawn treble clef is gone: the clef, the 4/4 time signature, noteheads (black, half, whole), eighth flags and the augmentation dot are the actual font outlines, inlined as SVG paths so nothing is fetched at runtime and no font has to load

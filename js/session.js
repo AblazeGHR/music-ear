@@ -64,10 +64,11 @@ function runSession(root, cfg) {
   const howToEl = h('div', { class: 's-howto hidden', id: HOWTO_ID });
   const answersEl = h('div', { class: 's-answers' });
   const feedbackEl = h('div', { class: 's-feedback' });
-  const actionsEl = h('div', { class: 's-actions' });
-  const topActionsEl = h('div', { class: 's-actions s-topnext' },
-    h('button', { class: 'btn ghost skip-btn', onclick: () => nextQuestion() },
-      h('span', {}, 'Next →')));
+  // One Next button under the title, never moved: quiet skip before answering,
+  // primary after. Only its class changes, so its box stays exactly the same.
+  const nextBtn = h('button', { class: 'btn ghost skip-btn', onclick: () => nextQuestion() },
+    h('span', {}, 'Next →'));
+  const topActionsEl = h('div', { class: 's-actions s-topnext' }, nextBtn);
   const scoreEl = h('div', { class: 's-score' });
 
   function toggleHowTo() {
@@ -307,7 +308,7 @@ function runSession(root, cfg) {
         scoreEl, voiceBtn, gestureBtn, helpBtn, statsBtn)),
     h('main', { class: 's-body' },
       h('div', { class: 's-stage' }, playBtn, promptEl, topActionsEl, howToEl),
-      answersEl, feedbackEl, voiceBar, actionsEl,
+      answersEl, feedbackEl, voiceBar,
       optionsEl,
       kbdEl),
     overlay);
@@ -446,16 +447,14 @@ function runSession(root, cfg) {
     userMidis = [];
     piano = null;
     feedbackEl.innerHTML = '';
-    actionsEl.innerHTML = '';
     answersEl.innerHTML = '';
     setPlayIcon('play');
     promptText.textContent = q.prompt;
     howToEl.textContent = mod.howTo || '';
     renderAnswers();
-    // Before answering, Next is a quiet skip under the title: no score, no
-    // stats, just a new question. After answering it hides and finishAnswer
-    // shows the primary Next below the feedback.
-    topActionsEl.classList.remove('hidden');
+    // Before answering, Next is a quiet skip: no score, no stats, just a new
+    // question. finishAnswer restyles the same button in place.
+    nextBtn.className = 'btn ghost skip-btn';
     updateScore();
     if (!gestureOn) kbdEl.textContent = kbdHint();
     syncGestureAffordance();
@@ -479,7 +478,7 @@ function runSession(root, cfg) {
 
   function finishAnswer(result, extraFeedback) {
     answered = true;
-    topActionsEl.classList.add('hidden');
+    nextBtn.className = 'btn primary skip-btn';
     lastResultCorrect = result.correct;
     sessionN++;
     if (result.correct) sessionC++;
@@ -499,16 +498,13 @@ function runSession(root, cfg) {
       }
     }
 
-    actionsEl.innerHTML = '';
-    const nextBtn = h('button', { class: 'btn primary', onclick: nextQuestion }, 'Next →');
-    actionsEl.append(nextBtn);
     if (result.correct && State.state.settings.autoAdvance) {
       autoAt = Date.now() + 1100;
       autoTimer = setTimeout(nextQuestion, 1100);
     } else {
-      // Move the keyboard focus to Next without scrolling: on a phone the
-      // feedback + buttons push the page down, and yanking the viewport after
-      // every answer breaks the rhythm of continuous practice.
+      // Keep the keyboard flow on Next without scrolling: the button now
+      // lives under the title, and yanking the viewport up after every answer
+      // would break the rhythm of continuous practice.
       nextBtn.focus({ preventScroll: true });
     }
   }

@@ -1283,3 +1283,6 @@ body {
 
 /* The clef and time signature are engraved glyphs: full ink, like the notes. */
 .score-svg .st-clef { color: var(--text); }
+
+/* The Next under the title keeps one box across both states. */
+.s-topnext .btn { min-width: 7.5rem; }
