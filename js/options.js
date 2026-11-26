@@ -44,10 +44,14 @@ export function renderOptions(mod, onChange) {
 const current = (mod, opt) => State.moduleConfig(mod.id)[opt.key];
 
 function control(mod, opt, set) {
+  // A control's choices may follow the live configuration (the chord-degree
+  // pool shows major numerals in major, minor numerals in minor).
+  const choices = typeof opt.choices === 'function'
+    ? opt.choices(State.moduleConfig(mod.id)) : opt.choices;
   if (opt.type === 'toggle') return row(opt.label, toggle(mod, opt, set));
-  if (opt.type === 'select') return row(opt.label, select(mod, opt, set));
+  if (opt.type === 'select') return row(opt.label, select(mod, opt, set, choices));
   if (opt.type === 'range') return row(opt.label, range(mod, opt, set));
-  return row(opt.label, chips(mod, opt, set));
+  return row(opt.label, chips(mod, opt, set, choices));
 }
 
 function row(label, control) {
@@ -66,13 +70,13 @@ function toggle(mod, opt, set) {
   return btn;
 }
 
-function select(mod, opt, set) {
+function select(mod, opt, set, choices) {
   const value = current(mod, opt);
   return h('select', {
     class: 'select',
     onchange: e => set(opt.coerce ? opt.coerce(e.target.value) : e.target.value),
   },
-    opt.choices.map(([v, label]) =>
+    choices.map(([v, label]) =>
       h('option', { value: String(v), ...(v === value ? { selected: '' } : {}) }, label)));
 }
 
@@ -113,12 +117,13 @@ function range(mod, opt, set) {
   return h('div', { class: 'range-pair' }, inputs[0], ' – ', inputs[1]);
 }
 
-function chips(mod, opt, set) {
+function chips(mod, opt, set, choices) {
   const selected = new Set(current(mod, opt));
   const wrap = h('div', { class: 'chip-wrap' });
-  for (const [id, label] of opt.choices) {
+  for (const [id, label] of choices) {
     wrap.append(h('button', {
       class: 'chip' + (selected.has(id) ? ' on' : ''),
+      ...(opt.noTranslate ? { 'data-no-i18n': '' } : {}),
       onclick: () => {
         const now = new Set(current(mod, opt));
         if (now.has(id) && now.size <= 1) return;   // never leave an empty pool

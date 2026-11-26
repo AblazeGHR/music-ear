@@ -613,12 +613,12 @@ function runSession(root, cfg) {
     // them, so "press I first" (everyone's instinct) is the right move.
     userSeq = q.answerSeq.map(() => null);
     slotEls = q.answerSeq.map((n, i) =>
-      h('div', { class: 'slot' + (q.given[i] ? ' ghost' : '') },
+      h('div', { class: 'slot' + (q.given[i] ? ' ghost' : ''), 'data-no-i18n': '' },
         q.given[i] ? n : '·'));
     optionBtns = q.options.map((opt, i) =>
       h('button', { class: 'opt numeral', onclick: () => fillSlot(opt.id) },
         i < 10 ? h('span', { class: 'opt-kbd' }, String((i + 1) % 10)) : null,
-        h('span', { class: 'opt-label' }, opt.label)));
+        h('span', { class: 'opt-label', 'data-no-i18n': '' }, opt.label)));
     answersEl.append(
       h('div', { class: 'slots' }, slotEls),
       h('div', { class: 'opt-grid numerals' }, optionBtns),

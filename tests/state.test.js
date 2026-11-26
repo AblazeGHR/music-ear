@@ -20,6 +20,17 @@ test('moduleConfig merges registry defaults with stored overrides', () => {
   assert.deepEqual(State.moduleConfig('intervals'), moduleById('intervals').defaults);
 });
 
+test('chord-degree pools follow the key across a mode switch', () => {
+  State.resetAll();
+  State.setExerciseOption('chorddegrees', 'degrees', ['I', 'IV', 'V', 'vi']);
+  State.setExerciseOption('chorddegrees', 'mode', 'minor');
+  assert.deepEqual(State.moduleConfig('chorddegrees').degrees, ['i', 'iv', 'V', 'VI'],
+    'the same scale degrees, written for minor');
+  State.setExerciseOption('chorddegrees', 'mode', 'major');
+  assert.deepEqual(State.moduleConfig('chorddegrees').degrees, ['I', 'IV', 'V', 'vi']);
+  State.resetAll();
+});
+
 test('chip pools always come back in the registry’s canonical order', () => {
   State.resetAll();
   // Clicked wildly out of order; the config must read back musically sorted.

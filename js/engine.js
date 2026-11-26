@@ -11,7 +11,7 @@
 
 import * as Audio from './audio.js';
 import {
-  INTERVALS, CHORDS, SCALES, DEGREES, NUMERALS, CADENCES,
+  INTERVALS, CHORDS, SCALES, DEGREES, NUMERALS, CADENCES, DIATONIC_DEGREES,
   pitchClassName,
   randInt, choice, weightedChoice,
 } from './theory.js';
@@ -46,6 +46,7 @@ export function generate(moduleId, cfg) {
     case 'scales': return genScale(mod, cfg);
     case 'degrees': return genDegree(mod, cfg);
     case 'progressions': return genProgression(mod, cfg);
+    case 'chorddegrees': return genChordDegrees(mod, cfg);
     case 'melodies': return genMelody(mod, cfg);
     case 'reading': return Reading.generate(mod, cfg);
   }
@@ -258,16 +259,15 @@ function genScale(mod, cfg) {
 
 // ── Functional helpers: cadence + voiced numerals ────────────────────────────
 
-// Close-position triad voiced near `center`, plus a bass root note.
-function voiceNumeral(keyRoot, numeralId, center = 64) {
-  const num = NUMERALS[numeralId];
-  const chordRoot = keyRoot + num.root;
-  const base = CHORDS[num.quality].semis; // [0,3/4,7]
-  const inversions = [
-    [base[0], base[1], base[2]],
-    [base[1], base[2], base[0] + 12],
-    [base[2], base[0] + 12, base[1] + 12],
-  ];
+// Close-position chord voiced near `center`, plus a bass root note. Inversions
+// are generated from the interval list, so triads and sevenths share one path.
+function voiceChord(keyRoot, rootSemi, quality, center = 64) {
+  const chordRoot = keyRoot + rootSemi;
+  const base = CHORDS[quality].semis;
+  const inversions = base.map((_, i) => [
+    ...base.slice(i),
+    ...base.slice(0, i).map(s => s + 12),
+  ]);
   let best = null, bestDist = Infinity;
   for (const inv of inversions) {
     for (const oct of [-12, 0, 12]) {
@@ -283,10 +283,68 @@ function voiceNumeral(keyRoot, numeralId, center = 64) {
   return [bass, ...best];
 }
 
+function voiceNumeral(keyRoot, numeralId, center = 64) {
+  const num = NUMERALS[numeralId];
+  return voiceChord(keyRoot, num.root, num.quality, center);
+}
+
 function cadenceFor(keyRoot, mode) {
   return Audio.cadenceEvents(
     CADENCES[mode].map(n => ({ root: 0, semis: voiceNumeral(keyRoot, n) }))
   );
+}
+
+function genChordDegrees(mod, cfg) {
+  const table = DIATONIC_DEGREES[cfg.mode] ?? DIATONIC_DEGREES.major;
+  const byId = new Map(table.map(d => [d.id, d]));
+  const pool = (cfg.degrees || []).filter(id => byId.has(id));
+  const usable = pool.length ? pool : table.slice(0, 4).map(d => d.id);
+  const length = Math.max(2, Math.min(8, Number(cfg.length) || 4));
+
+  const seq = [];
+  for (let i = 0; i < length; i++) {
+    let id;
+    do { id = choice(usable); } while (usable.length > 1 && seq.length && id === seq[seq.length - 1]);
+    seq.push(id);
+  }
+
+  const keyRoot = randInt(50, 59);
+  const cadence = cadenceFor(keyRoot, cfg.mode === 'minor' ? 'minor' : 'major');
+  const chordTypes = seq.map(() => (cfg.chordType === 'both'
+    ? choice(['triad', 'seventh'])
+    : cfg.chordType === 'seventh' ? 'seventh' : 'triad'));
+
+  let at = Audio.eventsDuration(cadence) + 0.8;
+  const start = at;
+  const progEvents = [];
+  for (let i = 0; i < seq.length; i++) {
+    const d = byId.get(seq[i]);
+    const quality = chordTypes[i] === 'seventh' ? d.seventh : d.triad;
+    progEvents.push({ midis: voiceChord(keyRoot, d.root, quality), at, dur: 0.9, vel: 0.62 });
+    at += 1.0;
+  }
+
+  return {
+    moduleId: 'chorddegrees', kind: 'sequence', prompt: mod.prompt,
+    options: usable.map(id => ({ id, label: byId.get(id).name })),
+    answerSeq: seq,
+    given: seq.map(() => false),
+    slots: length,
+    chordTypes,
+    play: () => playFresh([...cadence, ...progEvents]),
+    playProgressionOnly: () => playFresh(progEvents.map(e => ({ ...e, at: e.at - start }))),
+    playOption: null,
+    grade(userSeq) {
+      const itemResults = [];
+      let allCorrect = true;
+      for (let i = 0; i < seq.length; i++) {
+        const ok = userSeq[i] === seq[i];
+        if (!ok) allCorrect = false;
+        itemResults.push({ key: `cd:${cfg.mode}:${seq[i]}:${chordTypes[i]}`, correct: ok });
+      }
+      return { correct: allCorrect, itemResults, confusion: null };
+    },
+  };
 }
 
 // ── Scale degrees ─────────────────────────────────────────────────────────────

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.19.0 — 2026-11-26
+
+- 🎹 **New exercise: Chord Degrees.** A cadence fixes the key, then a progression of 2–8 chords plays; tap one Roman numeral per chord, in order. Options: **key** (major/minor), **which degrees may appear** (all seven diatonic functions), **chord type** (triads, seventh chords, or a mix) and **length**
+- The degree pool follows the key: switching major → minor rewrites the same scale degrees in minor (I → i, IV → iv, vi → VI), so a pool never contains a chord the key does not have
+- Seventh chords use a four-note voicing (bass + close position) from the same progression engine; each answer records whether it was a triad or a seventh in the statistics key
+- Chinese copy for the new exercise; the Key labels now read 大调/小调, and Roman numerals stay untranslated in the options, answer buttons and slots (they used to display as “I级” in Chinese)
+
 ## 0.18.4 — 2026-11-26
 
 - ⏭ **The after-answer Next stays under the title too.** It used to jump to the bottom of the page once you answered; now the same button never moves — it changes from the quiet skip style to the primary style in place, so its position and size are identical before answering, after answering, and after moving to the next question. The bottom actions row is gone

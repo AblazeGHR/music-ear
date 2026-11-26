@@ -131,9 +131,13 @@ export function moduleConfig(id) {
   const mod = moduleById(id);
   if (!mod) return null;
   const cfg = { ...mod.defaults, ...(state.settings.exercises[id] || {}) };
+  // Mode-dependent pools are repaired before anything reads them, so a key
+  // change can never leave degrees that do not exist in the new key.
+  if (typeof mod.normalise === 'function') mod.normalise(cfg);
   for (const opt of mod.options) {
     if (opt.type !== 'chips' || !Array.isArray(cfg[opt.key])) continue;
-    const index = new Map(opt.choices.map(([v], i) => [v, i]));
+    const choices = typeof opt.choices === 'function' ? opt.choices(cfg) : opt.choices;
+    const index = new Map(choices.map(([v], i) => [v, i]));
     const rank = v => (index.has(v) ? index.get(v) : Number.MAX_SAFE_INTEGER);
     cfg[opt.key] = [...cfg[opt.key]].sort((a, b) => rank(a) - rank(b));
   }

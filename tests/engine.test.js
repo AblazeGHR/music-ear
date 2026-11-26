@@ -111,6 +111,60 @@ test('progression questions honour their length and tonic settings', () => {
   }
 });
 
+test('chord-degree questions follow length, pool and chord type', () => {
+  const cfg = { mode: 'major', degrees: ['I', 'IV', 'V', 'vi'], length: 4, chordType: 'triad' };
+  for (let i = 0; i < 100; i++) {
+    const q = generate('chorddegrees', cfg);
+    assert.equal(q.kind, 'sequence');
+    assert.equal(q.answerSeq.length, 4);
+    assert.equal(q.slots, 4);
+    assert.deepEqual(q.options.map(o => o.id), ['I', 'IV', 'V', 'vi']);
+    assert.ok(q.answerSeq.every(id => cfg.degrees.includes(id)));
+    for (let k = 1; k < q.answerSeq.length; k++) {
+      assert.notEqual(q.answerSeq[k], q.answerSeq[k - 1], 'no immediate repeat');
+    }
+    assert.ok(q.chordTypes.every(t => t === 'triad'));
+    assert.deepEqual(q.given, [false, false, false, false]);
+  }
+
+  const seventh = { ...cfg, chordType: 'seventh' };
+  for (let i = 0; i < 50; i++) {
+    assert.ok(generate('chorddegrees', seventh).chordTypes.every(t => t === 'seventh'));
+  }
+  const both = { ...cfg, chordType: 'both', length: 8 };
+  const seen = new Set();
+  for (let i = 0; i < 60; i++) {
+    const q = generate('chorddegrees', both);
+    assert.equal(q.answerSeq.length, 8);
+    q.chordTypes.forEach(t => seen.add(t));
+  }
+  assert.deepEqual([...seen].sort(), ['seventh', 'triad'], 'Both mixes the two types');
+});
+
+test('minor chord degrees use minor numerals and stay in the key', () => {
+  const cfg = { mode: 'minor', degrees: ['i', 'iv', 'V', 'VI'], length: 3, chordType: 'triad' };
+  for (let i = 0; i < 60; i++) {
+    const q = generate('chorddegrees', cfg);
+    assert.deepEqual(q.options.map(o => o.id), ['i', 'iv', 'V', 'VI']);
+    assert.ok(q.answerSeq.every(id => cfg.degrees.includes(id)));
+  }
+});
+
+test('chord-degree grading marks every position and records its type', () => {
+  const q = generate('chorddegrees', { mode: 'major', degrees: ['I', 'V'], length: 2, chordType: 'both' });
+  const good = q.grade(q.answerSeq.slice());
+  assert.equal(good.correct, true);
+  assert.equal(good.itemResults.length, 2);
+  assert.ok(good.itemResults.every(r => r.key.startsWith('cd:major:') && r.correct));
+
+  const badSeq = q.answerSeq.slice();
+  badSeq[0] = badSeq[0] === 'I' ? 'V' : 'I';
+  const bad = q.grade(badSeq);
+  assert.equal(bad.correct, false);
+  assert.equal(bad.itemResults[0].correct, false);
+  assert.equal(bad.itemResults[1].correct, true);
+});
+
 test('interval replays re-voice the question in a different direction', () => {
   const dirOf = events => {
     if (events.length === 1) return 'h';                 // both notes at once

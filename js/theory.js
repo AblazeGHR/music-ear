@@ -152,6 +152,31 @@ export const NUMERALS = {
   VII:  { root: 10, quality: 'maj', name: 'VII' },
 };
 
+// Every diatonic degree of a key, with the triad and seventh chord built on it.
+// The exercise picks degrees from this table so a minor pool can never ask for
+// a chord that does not exist in that key. Minor uses the harmonic dominant (V)
+// and the natural subtonic (VII) — one chord per degree, no v/V duplicates.
+export const DIATONIC_DEGREES = {
+  major: [
+    { no: 1, id: 'I',    name: 'I',    root: 0,  triad: 'maj', seventh: 'maj7' },
+    { no: 2, id: 'ii',   name: 'ii',   root: 2,  triad: 'min', seventh: 'min7' },
+    { no: 3, id: 'iii',  name: 'iii',  root: 4,  triad: 'min', seventh: 'min7' },
+    { no: 4, id: 'IV',   name: 'IV',   root: 5,  triad: 'maj', seventh: 'maj7' },
+    { no: 5, id: 'V',    name: 'V',    root: 7,  triad: 'maj', seventh: 'dom7' },
+    { no: 6, id: 'vi',   name: 'vi',   root: 9,  triad: 'min', seventh: 'min7' },
+    { no: 7, id: 'vii°', name: 'vii°', root: 11, triad: 'dim', seventh: 'm7b5' },
+  ],
+  minor: [
+    { no: 1, id: 'i',    name: 'i',    root: 0,  triad: 'min', seventh: 'min7' },
+    { no: 2, id: 'ii°',  name: 'ii°',  root: 2,  triad: 'dim', seventh: 'm7b5' },
+    { no: 3, id: 'III',  name: 'III',  root: 3,  triad: 'maj', seventh: 'maj7' },
+    { no: 4, id: 'iv',   name: 'iv',   root: 5,  triad: 'min', seventh: 'min7' },
+    { no: 5, id: 'V',    name: 'V',    root: 7,  triad: 'maj', seventh: 'dom7' },
+    { no: 6, id: 'VI',   name: 'VI',   root: 8,  triad: 'maj', seventh: 'maj7' },
+    { no: 7, id: 'VII',  name: 'VII',  root: 10, triad: 'maj', seventh: 'dom7' },
+  ],
+};
+
 // Cadences used to establish a key before functional questions.
 export const CADENCES = {
   major: ['I', 'IV', 'V', 'I'],

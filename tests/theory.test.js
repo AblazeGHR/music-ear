@@ -227,8 +227,11 @@ test('the exercise registry is internally consistent', () => {
       assert.ok(opt.key in mod.defaults, `${mod.id} option "${opt.key}" has no default`);
       assert.ok(opt.label, `${mod.id} option "${opt.key}" needs a label`);
       if (opt.type === 'chips' || opt.type === 'select') {
-        assert.ok(Array.isArray(opt.choices) && opt.choices.length > 0, `${mod.id}.${opt.key} choices`);
-        assert.ok(opt.choices.every(([v, l]) => l !== undefined), `${mod.id}.${opt.key} choice labels`);
+        // Choices may depend on the live configuration (the chord-degree pool
+        // follows the key), so resolve them against the defaults here.
+        const choices = typeof opt.choices === 'function' ? opt.choices(mod.defaults) : opt.choices;
+        assert.ok(Array.isArray(choices) && choices.length > 0, `${mod.id}.${opt.key} choices`);
+        assert.ok(choices.every(([v, l]) => l !== undefined), `${mod.id}.${opt.key} choice labels`);
       } else if (opt.type === 'range') {
         assert.ok(opt.min <= opt.max, `${mod.id}.${opt.key} range bounds`);
       } else {
