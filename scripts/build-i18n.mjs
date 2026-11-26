@@ -69,10 +69,6 @@ const EXTRA = {
   'Random': '随机',
   'Chords per question': '每题和弦数',
   'First chord is the tonic': '第一个和弦是主和弦',
-  'Chord Degrees': '和弦级数',
-  "Name each chord's degree": '说出每个和弦的级数',
-  'A cadence fixes the key, then a short progression plays. Tap one Roman numeral per chord, in order.':
-    '先用终止式确定调性，然后播放一段和弦进行。按顺序为每个和弦点一个罗马数字级数。',
   "Hear a key, then name each chord's scale degree — triads or seventh chords.":
     '先听调性，再判断每个和弦的级数——三和弦或七和弦。',
   'Find the bass first, then decide which degree it sits on. A seventh adds a fourth note — use it to confirm the chord, not to guess it.':

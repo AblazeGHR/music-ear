@@ -13,7 +13,7 @@
 //   { key, label, type: 'range', min, max, step }                 two numbers
 
 import {
-  INTERVALS, CHORDS, SCALES, DEGREES, NUMERALS, DIATONIC_DEGREES,
+  INTERVALS, CHORDS, SCALES, DEGREES, DIATONIC_DEGREES, degreesInMode,
   pitchClassName,
 } from './theory.js';
 
@@ -23,34 +23,8 @@ const INTERVAL_CHOICES = Object.entries(INTERVALS).map(([id, iv]) => [id, iv.nam
 const CHORD_CHOICES = Object.entries(CHORDS).map(([id, c]) => [id, c.name]);
 const SCALE_CHOICES = Object.entries(SCALES).map(([id, sc]) => [id, sc.name]);
 const DEGREE_CHOICES = Object.entries(DEGREES).map(([id, d]) => [id, d.solfege]);
-const NUMERAL_CHOICES = Object.entries(NUMERALS).map(([id, n]) => [id, n.name]);
 // 'random' plus all twelve tonics; the engine places a fixed tonic at C3–B3.
 const TONIC_CHOICES = [['random', 'Random'], ...pitches().map(pc => [String(pc), pitchClassName(pc)])];
-
-// Degree ids are mode-specific (I vs i, ii vs ii°). Switching the key maps the
-// chosen degrees across by scale-degree number, so a major pool does not turn
-// into an empty pool when the user picks minor.
-const CHORD_DEGREE_DEFAULTS = { mode: 'major', tonic: 'random', degrees: ['I', 'IV', 'V', 'vi'], length: 4, chordType: 'triad' };
-
-function degreeNumber(id) {
-  for (const list of Object.values(DIATONIC_DEGREES)) {
-    const hit = list.find(d => d.id === id);
-    if (hit) return hit.no;
-  }
-  return null;
-}
-
-function degreesIn(mode, ids) {
-  const table = DIATONIC_DEGREES[mode] ?? DIATONIC_DEGREES.major;
-  const byNo = new Map(table.map(d => [d.no, d.id]));
-  const out = [];
-  for (const id of ids) {
-    const no = degreeNumber(id);
-    const mapped = no === null ? null : byNo.get(no);
-    if (mapped && !out.includes(mapped)) out.push(mapped);
-  }
-  return out;
-}
 
 const MIDI_RANGE = { min: 21, max: 108, step: 1 };
 
@@ -171,58 +145,37 @@ export const MODULES = [
     itemPrefix: 'pg',   // item-stat keys: "pg:…"
     prompt: 'Name the chords you hear',
     howTo: 'A cadence establishes the key, then a progression plays. Tap one Roman numeral per chord, in order.',
-    blurb: 'Hear a key, then identify each chord of a progression by its Roman numeral.',
-    tip: 'Track the bass line first — it usually walks from root to root. Then confirm with each chord\'s colour: is it the bright IV or the wistful vi?',
-    defaults: { mode: 'major', tonic: 'random', pool: ['I', 'IV', 'V', 'vi'], length: 4, startTonic: true },
-    options: [
-      {
-        key: 'mode', label: 'Key', type: 'select',
-        choices: [['major', 'Major key'], ['minor', 'Minor key']],
-      },
-      { key: 'tonic', label: 'Tonic', type: 'select', choices: TONIC_CHOICES },
-      { key: 'pool', label: 'Chords', type: 'chips', choices: NUMERAL_CHOICES, noTranslate: true },
-      {
-        key: 'length', label: 'Chords per question', type: 'select', coerce: Number,
-        choices: [[3, 'Three'], [4, 'Four'], [5, 'Five']],
-      },
-      { key: 'startTonic', label: 'First chord is the tonic', type: 'toggle' },
-    ],
-  },
-  {
-    id: 'chorddegrees',
-    title: 'Chord Degrees',
-    icon: 'music-4',
-    color: 'lime',
-    kind: 'sequence',
-    itemPrefix: 'cd',   // item-stat keys: "cd:…"
-    prompt: "Name each chord's degree",
-    howTo: 'A cadence fixes the key, then a short progression plays. Tap one Roman numeral per chord, in order.',
     blurb: "Hear a key, then name each chord's scale degree — triads or seventh chords.",
     tip: 'Find the bass first, then decide which degree it sits on. A seventh adds a fourth note — use it to confirm the chord, not to guess it.',
-    defaults: CHORD_DEGREE_DEFAULTS,
+    defaults: {
+      mode: 'major', tonic: 'random', pool: ['I', 'IV', 'V', 'vi'],
+      length: 4, chordType: 'triad', startTonic: true,
+    },
     options: [
-      {
-        key: 'length', label: 'Chords per question', type: 'select', coerce: Number,
-        choices: [[2, 'Two'], [3, 'Three'], [4, 'Four'], [5, 'Five'], [6, 'Six'], [7, 'Seven'], [8, 'Eight']],
-      },
       {
         key: 'mode', label: 'Key', type: 'select',
         choices: [['major', 'Major key'], ['minor', 'Minor key']],
       },
       { key: 'tonic', label: 'Tonic', type: 'select', choices: TONIC_CHOICES },
       {
-        key: 'degrees', label: 'Degrees', type: 'chips', noTranslate: true,
+        key: 'pool', label: 'Degrees', type: 'chips', noTranslate: true,
         choices: cfg => (DIATONIC_DEGREES[cfg.mode] ?? DIATONIC_DEGREES.major).map(d => [d.id, d.name]),
       },
       {
         key: 'chordType', label: 'Chord type', type: 'select',
         choices: [['triad', 'Triads'], ['seventh', 'Seventh chords'], ['both', 'Both']],
       },
+      {
+        key: 'length', label: 'Chords per question', type: 'select', coerce: Number,
+        choices: [[2, 'Two'], [3, 'Three'], [4, 'Four'], [5, 'Five'], [6, 'Six'], [7, 'Seven'], [8, 'Eight']],
+      },
+      { key: 'startTonic', label: 'First chord is the tonic', type: 'toggle' },
     ],
-    // Keep the pool valid after a key change (I→i, ii→ii°, …).
+    // The pool follows the key: I→i, ii→ii°, … so it never offers a chord the
+    // key does not have.
     normalise(cfg) {
-      cfg.degrees = degreesIn(cfg.mode, cfg.degrees || []);
-      if (!cfg.degrees.length) cfg.degrees = degreesIn(cfg.mode, CHORD_DEGREE_DEFAULTS.degrees);
+      cfg.pool = degreesInMode(cfg.mode, cfg.pool || []);
+      if (!cfg.pool.length) cfg.pool = degreesInMode(cfg.mode, ['I', 'IV', 'V', 'vi']);
       if (!['triad', 'seventh', 'both'].includes(cfg.chordType)) cfg.chordType = 'triad';
     },
   },

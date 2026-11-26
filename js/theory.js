@@ -177,6 +177,29 @@ export const DIATONIC_DEGREES = {
   ],
 };
 
+// The scale-degree number of any degree id (works across both tables).
+export function degreeNumber(id) {
+  for (const list of Object.values(DIATONIC_DEGREES)) {
+    const hit = list.find(d => d.id === id);
+    if (hit) return hit.no;
+  }
+  return null;
+}
+
+// Map a set of degree ids onto the numerals of `mode` by scale-degree number,
+// dropping duplicates and anything the mode does not have.
+export function degreesInMode(mode, ids) {
+  const table = DIATONIC_DEGREES[mode] ?? DIATONIC_DEGREES.major;
+  const byNo = new Map(table.map(d => [d.no, d.id]));
+  const out = [];
+  for (const id of ids || []) {
+    const no = degreeNumber(id);
+    const mapped = no === null ? null : byNo.get(no);
+    if (mapped && !out.includes(mapped)) out.push(mapped);
+  }
+  return out;
+}
+
 // Cadences used to establish a key before functional questions.
 export const CADENCES = {
   major: ['I', 'IV', 'V', 'I'],

@@ -11,7 +11,7 @@
 
 import * as Audio from './audio.js';
 import {
-  INTERVALS, CHORDS, SCALES, DEGREES, NUMERALS, CADENCES, DIATONIC_DEGREES,
+  INTERVALS, CHORDS, SCALES, DEGREES, NUMERALS, CADENCES, DIATONIC_DEGREES, degreesInMode,
   pitchClassName,
   randInt, choice, weightedChoice,
 } from './theory.js';
@@ -46,7 +46,6 @@ export function generate(moduleId, cfg) {
     case 'scales': return genScale(mod, cfg);
     case 'degrees': return genDegree(mod, cfg);
     case 'progressions': return genProgression(mod, cfg);
-    case 'chorddegrees': return genChordDegrees(mod, cfg);
     case 'melodies': return genMelody(mod, cfg);
     case 'reading': return Reading.generate(mod, cfg);
   }
@@ -304,60 +303,6 @@ function cadenceFor(keyRoot, mode) {
   );
 }
 
-function genChordDegrees(mod, cfg) {
-  const table = DIATONIC_DEGREES[cfg.mode] ?? DIATONIC_DEGREES.major;
-  const byId = new Map(table.map(d => [d.id, d]));
-  const pool = (cfg.degrees || []).filter(id => byId.has(id));
-  const usable = pool.length ? pool : table.slice(0, 4).map(d => d.id);
-  const length = Math.max(2, Math.min(8, Number(cfg.length) || 4));
-
-  const seq = [];
-  for (let i = 0; i < length; i++) {
-    let id;
-    do { id = choice(usable); } while (usable.length > 1 && seq.length && id === seq[seq.length - 1]);
-    seq.push(id);
-  }
-
-  const keyRoot = keyRootFor(cfg);
-  const cadence = cadenceFor(keyRoot, cfg.mode === 'minor' ? 'minor' : 'major');
-  const chordTypes = seq.map(() => (cfg.chordType === 'both'
-    ? choice(['triad', 'seventh'])
-    : cfg.chordType === 'seventh' ? 'seventh' : 'triad'));
-
-  let at = Audio.eventsDuration(cadence) + 0.8;
-  const start = at;
-  const progEvents = [];
-  for (let i = 0; i < seq.length; i++) {
-    const d = byId.get(seq[i]);
-    const quality = chordTypes[i] === 'seventh' ? d.seventh : d.triad;
-    progEvents.push({ midis: voiceChord(keyRoot, d.root, quality), at, dur: 0.9, vel: 0.62 });
-    at += 1.0;
-  }
-
-  return {
-    moduleId: 'chorddegrees', kind: 'sequence', prompt: mod.prompt,
-    keyRoot,
-    options: usable.map(id => ({ id, label: byId.get(id).name })),
-    answerSeq: seq,
-    given: seq.map(() => false),
-    slots: length,
-    chordTypes,
-    play: () => playFresh([...cadence, ...progEvents]),
-    playProgressionOnly: () => playFresh(progEvents.map(e => ({ ...e, at: e.at - start }))),
-    playOption: null,
-    grade(userSeq) {
-      const itemResults = [];
-      let allCorrect = true;
-      for (let i = 0; i < seq.length; i++) {
-        const ok = userSeq[i] === seq[i];
-        if (!ok) allCorrect = false;
-        itemResults.push({ key: `cd:${cfg.mode}:${seq[i]}:${chordTypes[i]}`, correct: ok });
-      }
-      return { correct: allCorrect, itemResults, confusion: null };
-    },
-  };
-}
-
 // ── Scale degrees ─────────────────────────────────────────────────────────────
 
 function genDegree(mod, cfg) {
@@ -406,17 +351,21 @@ function genDegree(mod, cfg) {
 // ── Progressions ──────────────────────────────────────────────────────────────
 
 function genProgression(mod, cfg) {
-  // The forced tonic must exist in the pool — switching to a minor key with a
-  // major-numeral pool must not ask for a chord that has no answer button.
-  const tonicId = cfg.mode === 'major' ? 'I' : 'i';
-  const useTonic = cfg.startTonic && cfg.pool.includes(tonicId);
-  const enders = cfg.pool.filter(n => ['I', 'i', 'V', 'vi'].includes(n));
+  const table = DIATONIC_DEGREES[cfg.mode] ?? DIATONIC_DEGREES.major;
+  const byId = new Map(table.map(d => [d.id, d]));
+  const usable = degreesInMode(cfg.mode, cfg.pool || []);
+  if (!usable.length) usable.push(...table.slice(0, 4).map(d => d.id));
+  const length = Math.max(2, Math.min(8, Number(cfg.length) || 4));
+  const tonicId = table[0].id;
+  const useTonic = cfg.startTonic !== false && usable.includes(tonicId);
+  const enderIds = new Set(table.filter(d => [1, 5, 6].includes(d.no)).map(d => d.id));
+  const enders = usable.filter(id => enderIds.has(id));
 
-  const seq = [useTonic ? tonicId : choice(cfg.pool)];
-  for (let i = 1; i < cfg.length; i++) {
-    if (cfg.pool.length < 2) { seq.push(cfg.pool[0]); continue; }   // no alternative chord
+  const seq = [useTonic ? tonicId : choice(usable)];
+  for (let i = 1; i < length; i++) {
+    if (usable.length < 2) { seq.push(usable[0]); continue; }   // no alternative chord
     let next;
-    do { next = choice(cfg.pool); } while (next === seq[i - 1]);
+    do { next = choice(usable); } while (next === seq[i - 1]);
     seq.push(next);
   }
   // Real progressions tend to land somewhere stable.
@@ -427,10 +376,17 @@ function genProgression(mod, cfg) {
 
   const keyRoot = keyRootFor(cfg);
   const cadence = cadenceFor(keyRoot, cfg.mode);
+  const chordTypes = seq.map(() => (cfg.chordType === 'both'
+    ? choice(['triad', 'seventh'])
+    : cfg.chordType === 'seventh' ? 'seventh' : 'triad'));
+
   let at = Audio.eventsDuration(cadence) + 0.8;
+  const start = at;
   const progEvents = [];
-  for (const n of seq) {
-    progEvents.push({ midis: voiceNumeral(keyRoot, n), at, dur: 0.85, vel: 0.6 });
+  for (let i = 0; i < seq.length; i++) {
+    const d = byId.get(seq[i]);
+    const quality = chordTypes[i] === 'seventh' ? d.seventh : d.triad;
+    progEvents.push({ midis: voiceChord(keyRoot, d.root, quality), at, dur: 0.9, vel: 0.62 });
     at += 0.95;
   }
   const events = [...cadence, ...progEvents];
@@ -439,12 +395,13 @@ function genProgression(mod, cfg) {
   return {
     moduleId: 'progressions', kind: 'sequence', prompt: mod.prompt,
     keyRoot,
-    options: cfg.pool.map(id => ({ id, label: NUMERALS[id].name })),
+    options: usable.map(id => ({ id, label: byId.get(id).name })),
     answerSeq: seq,
     given,
-    slots: cfg.length,
+    slots: length,
+    chordTypes,
     play: () => playFresh(events),
-    playProgressionOnly: () => playFresh(progEvents.map(e => ({ ...e, at: e.at - progEvents[0].at }))),
+    playProgressionOnly: () => playFresh(progEvents.map(e => ({ ...e, at: e.at - start }))),
     playOption: null,
     grade(userSeq) { // user fills every slot; given slots are just shown as hints
       const itemResults = [];

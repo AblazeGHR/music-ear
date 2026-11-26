@@ -111,15 +111,18 @@ test('progression questions honour their length and tonic settings', () => {
   }
 });
 
-test('chord-degree questions follow length, pool and chord type', () => {
-  const cfg = { mode: 'major', degrees: ['I', 'IV', 'V', 'vi'], length: 4, chordType: 'triad' };
+test('progression questions follow length, pool and chord type', () => {
+  const cfg = {
+    mode: 'major', tonic: 'random', pool: ['I', 'IV', 'V', 'vi'],
+    length: 4, chordType: 'triad', startTonic: false,
+  };
   for (let i = 0; i < 100; i++) {
-    const q = generate('chorddegrees', cfg);
+    const q = generate('progressions', cfg);
     assert.equal(q.kind, 'sequence');
     assert.equal(q.answerSeq.length, 4);
     assert.equal(q.slots, 4);
     assert.deepEqual(q.options.map(o => o.id), ['I', 'IV', 'V', 'vi']);
-    assert.ok(q.answerSeq.every(id => cfg.degrees.includes(id)));
+    assert.ok(q.answerSeq.every(id => cfg.pool.includes(id)));
     for (let k = 1; k < q.answerSeq.length; k++) {
       assert.notEqual(q.answerSeq[k], q.answerSeq[k - 1], 'no immediate repeat');
     }
@@ -129,12 +132,12 @@ test('chord-degree questions follow length, pool and chord type', () => {
 
   const seventh = { ...cfg, chordType: 'seventh' };
   for (let i = 0; i < 50; i++) {
-    assert.ok(generate('chorddegrees', seventh).chordTypes.every(t => t === 'seventh'));
+    assert.ok(generate('progressions', seventh).chordTypes.every(t => t === 'seventh'));
   }
   const both = { ...cfg, chordType: 'both', length: 8 };
   const seen = new Set();
   for (let i = 0; i < 60; i++) {
-    const q = generate('chorddegrees', both);
+    const q = generate('progressions', both);
     assert.equal(q.answerSeq.length, 8);
     q.chordTypes.forEach(t => seen.add(t));
   }
@@ -143,20 +146,16 @@ test('chord-degree questions follow length, pool and chord type', () => {
 
 test('a fixed tonic places the question in that key; random covers all twelve', () => {
   for (const [pc, midi] of [[0, 48], [7, 55], [11, 59]]) {
-    const q = generate('chorddegrees', {
-      mode: 'major', tonic: String(pc), degrees: ['I', 'V'], length: 2, chordType: 'triad',
+    const q = generate('progressions', {
+      mode: 'major', tonic: String(pc), pool: ['I', 'V'], length: 2, startTonic: false,
     });
     assert.equal(q.keyRoot, midi, `tonic ${pc} sits at ${midi}`);
   }
-  const p = generate('progressions', {
-    mode: 'major', tonic: '5', pool: ['I', 'V'], length: 2, startTonic: true,
-  });
-  assert.equal(p.keyRoot, 53, 'the same tonic option works for Progressions');
 
   const seen = new Set();
   for (let i = 0; i < 200; i++) {
-    const q = generate('chorddegrees', {
-      mode: 'major', tonic: 'random', degrees: ['I', 'V'], length: 2, chordType: 'triad',
+    const q = generate('progressions', {
+      mode: 'major', tonic: 'random', pool: ['I', 'V'], length: 2, startTonic: false,
     });
     assert.ok(q.keyRoot >= 48 && q.keyRoot <= 59);
     seen.add(q.keyRoot);
@@ -164,21 +163,28 @@ test('a fixed tonic places the question in that key; random covers all twelve', 
   assert.ok(seen.has(48), 'C is no longer skipped');
 });
 
-test('minor chord degrees use minor numerals and stay in the key', () => {
-  const cfg = { mode: 'minor', degrees: ['i', 'iv', 'V', 'VI'], length: 3, chordType: 'triad' };
+test('minor progressions use minor numerals and map a major pool onto them', () => {
+  const direct = { mode: 'minor', pool: ['i', 'iv', 'V', 'VI'], length: 3, chordType: 'triad', startTonic: false };
   for (let i = 0; i < 60; i++) {
-    const q = generate('chorddegrees', cfg);
+    const q = generate('progressions', direct);
     assert.deepEqual(q.options.map(o => o.id), ['i', 'iv', 'V', 'VI']);
-    assert.ok(q.answerSeq.every(id => cfg.degrees.includes(id)));
+    assert.ok(q.answerSeq.every(id => direct.pool.includes(id)));
+  }
+  // The same scale degrees written in major map onto the minor numerals.
+  for (let i = 0; i < 40; i++) {
+    const q = generate('progressions', { ...direct, pool: ['I', 'IV', 'V', 'VI'] });
+    assert.deepEqual(q.options.map(o => o.id), ['i', 'iv', 'V', 'VI']);
   }
 });
 
-test('chord-degree grading marks every position and records its type', () => {
-  const q = generate('chorddegrees', { mode: 'major', degrees: ['I', 'V'], length: 2, chordType: 'both' });
+test('progression grading marks every position', () => {
+  const q = generate('progressions', {
+    mode: 'major', pool: ['I', 'V'], length: 2, chordType: 'both', startTonic: false,
+  });
   const good = q.grade(q.answerSeq.slice());
   assert.equal(good.correct, true);
   assert.equal(good.itemResults.length, 2);
-  assert.ok(good.itemResults.every(r => r.key.startsWith('cd:major:') && r.correct));
+  assert.ok(good.itemResults.every(r => r.key.startsWith('pg:major:') && r.correct));
 
   const badSeq = q.answerSeq.slice();
   badSeq[0] = badSeq[0] === 'I' ? 'V' : 'I';
@@ -277,13 +283,13 @@ test('degenerate option pools terminate instead of hanging or throwing', () => {
     assert.equal(q.grade(['I', 'I', 'I', 'I']).correct, true);
   }
 
-  // Switching to a minor key while the pool only holds major numerals must not
-  // force a tonic that has no answer button.
+  // A major-written pool is mapped onto minor, so the tonic stays answerable.
   for (let i = 0; i < 50; i++) {
     const q = generate('progressions', { mode: 'minor', pool: ['I', 'IV', 'V'], length: 3, startTonic: true });
     assert.equal(q.answerSeq.length, 3);
-    assert.ok(q.options.some(o => o.id === q.answerSeq[0]), 'first chord must be answerable');
-    assert.equal(q.given[0], false, 'no phantom tonic when the pool lacks it');
+    assert.deepEqual(q.options.map(o => o.id), ['i', 'iv', 'V']);
+    assert.equal(q.answerSeq[0], 'i', 'startTonic opens on the minor tonic');
+    assert.equal(q.given[0], true);
   }
 
   // A one-note melody pool cannot move: it must repeat, not crash.

@@ -20,14 +20,14 @@ test('moduleConfig merges registry defaults with stored overrides', () => {
   assert.deepEqual(State.moduleConfig('intervals'), moduleById('intervals').defaults);
 });
 
-test('chord-degree pools follow the key across a mode switch', () => {
+test('the progression pool follows the key across a mode switch', () => {
   State.resetAll();
-  State.setExerciseOption('chorddegrees', 'degrees', ['I', 'IV', 'V', 'vi']);
-  State.setExerciseOption('chorddegrees', 'mode', 'minor');
-  assert.deepEqual(State.moduleConfig('chorddegrees').degrees, ['i', 'iv', 'V', 'VI'],
+  State.setExerciseOption('progressions', 'pool', ['I', 'IV', 'V', 'vi']);
+  State.setExerciseOption('progressions', 'mode', 'minor');
+  assert.deepEqual(State.moduleConfig('progressions').pool, ['i', 'iv', 'V', 'VI'],
     'the same scale degrees, written for minor');
-  State.setExerciseOption('chorddegrees', 'mode', 'major');
-  assert.deepEqual(State.moduleConfig('chorddegrees').degrees, ['I', 'IV', 'V', 'vi']);
+  State.setExerciseOption('progressions', 'mode', 'major');
+  assert.deepEqual(State.moduleConfig('progressions').pool, ['I', 'IV', 'V', 'vi']);
   State.resetAll();
 });
 

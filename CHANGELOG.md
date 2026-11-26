@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.19.2 — 2026-11-26
+
+- 🔀 **Progressions and Chord Degrees are one exercise.** The separate Chord Degrees card is gone; Progressions now covers both: key, tonic, a mode-filtered degree pool, chord type (triads / sevenths / both), 2–8 chords per question, and the optional "first chord is the tonic" hint
+- The degree pool is the set of seven diatonic functions for the chosen key, so it can no longer offer a numeral that does not exist in that key; switching major → minor rewrites the same degrees (I → i, IV → iv, vi → VI)
+- Existing Progressions statistics keep their keys (`pg:mode:degree`); nothing to migrate. The temporary Chord Degrees card was never in a release before this merge
+
 ## 0.19.1 — 2026-11-26
 
 - 🎚 **Choose the tonic** in Progressions and Chord Degrees: Random (default) or any of the twelve keys. A fixed tonic is placed at C3–B3, so “C major” is now actually available
