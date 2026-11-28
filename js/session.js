@@ -542,15 +542,22 @@ function runSession(root, cfg) {
   }
 
   // After a miss every option stays live as a preview: tapping it (or saying
-  // its name, or tapping it N times in gesture mode) plays that option.
+  // its name, or tapping it N times in gesture mode) plays that option. Tapping
+  // the right one then earns the same blip a correct answer gets, so the answer
+  // confirms itself by ear even though the question is already scored.
   async function auditionChoice(id) {
     if (!q || q.kind !== 'choice' || typeof q.playOption !== 'function') return;
     Audio.unlock();
-    compareRun++;
+    const run = ++compareRun;
     Audio.stopAll();
     const holdVoice = voiceOn;
     if (holdVoice) voice.pause();
-    try { await q.playOption(id); } finally { if (holdVoice) voice.resume(); }
+    try {
+      await q.playOption(id);
+      if (run === compareRun && lastResultCorrect === false && id === q.answerId) {
+        await Audio.playNote(91, 0.14, 1, { lead: UI_LEAD });
+      }
+    } finally { if (holdVoice) voice.resume(); }
   }
 
   function onOptionClick(id) {

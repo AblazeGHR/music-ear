@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.19.3 — 2026-11-29
+
+- ✅ **The right answer confirms itself by ear.** After a miss, tapping the correct option — or its Answer replay button, or saying/tapping its number — now ends with the same short blip a correct answer gets. The confirmation no longer disappears just because the question was already scored
+
 ## 0.19.2 — 2026-11-26
 
 - 🔀 **Progressions and Chord Degrees are one exercise.** The separate Chord Degrees card is gone; Progressions now covers both: key, tonic, a mode-filtered degree pool, chord type (triads / sevenths / both), 2–8 chords per question, and the optional "first chord is the tonic" hint
